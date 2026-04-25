@@ -9,6 +9,7 @@ import { convertClaudeToCopilot } from "../converters/claude-to-copilot"
 import { convertClaudeToDroid } from "../converters/claude-to-droid"
 import { convertClaudeToGemini } from "../converters/claude-to-gemini"
 import { convertClaudeToKiro } from "../converters/claude-to-kiro"
+import { convertClaudeToKimi } from "../converters/claude-to-kimi"
 import { convertClaudeToOpenCode } from "../converters/claude-to-opencode"
 import { convertClaudeToPi } from "../converters/claude-to-pi"
 import {
@@ -17,6 +18,7 @@ import {
   getLegacyDroidArtifacts,
   getLegacyGeminiArtifacts,
   getLegacyKiroArtifacts,
+  getLegacyKimiArtifacts,
   getLegacyOpenCodeArtifacts,
   getLegacyPiArtifacts,
   getLegacyPluginArtifacts,
@@ -29,7 +31,7 @@ import { isSafeManagedPath, pathExists, readJson, sanitizePathName } from "../ut
 import { resolveOpenCodeGlobalRoot } from "../utils/opencode-config"
 import { expandHome, resolveTargetHome } from "../utils/resolve-home"
 
-const cleanupTargets = ["codex", "opencode", "pi", "gemini", "kiro", "copilot", "droid", "qwen", "windsurf"] as const
+const cleanupTargets = ["codex", "opencode", "pi", "gemini", "kiro", "kimi", "copilot", "droid", "qwen", "windsurf"] as const
 type CleanupTarget = typeof cleanupTargets[number]
 
 type CleanupResult = {
@@ -52,7 +54,7 @@ export default defineCommand({
     target: {
       type: "string",
       default: "all",
-      description: "Target to clean: codex | opencode | pi | gemini | kiro | copilot | droid | qwen | windsurf | all",
+      description: "Target to clean: codex | opencode | pi | gemini | kiro | kimi | copilot | droid | qwen | windsurf | all",
     },
     output: {
       type: "string",
@@ -83,6 +85,11 @@ export default defineCommand({
       type: "string",
       alias: "kiro-home",
       description: "Kiro root to clean (default: ./.kiro)",
+    },
+    kimiHome: {
+      type: "string",
+      alias: "kimi-home",
+      description: "Kimi root to clean (default: ./.kimi)",
     },
     copilotHome: {
       type: "string",
@@ -128,6 +135,7 @@ export default defineCommand({
       opencodeHome: resolveTargetHome(args.opencodeHome, resolveOpenCodeGlobalRoot()),
       geminiHome: resolveTargetHome(args.geminiHome, path.join(os.homedir(), ".gemini")),
       kiroHome: resolveTargetHome(args.kiroHome, path.join(outputRoot, ".kiro")),
+      kimiHome: resolveTargetHome(args.kimiHome, path.join(outputRoot, ".kimi")),
       copilotHome: resolveTargetHome(args.copilotHome, path.join(os.homedir(), ".copilot")),
       droidHome: resolveTargetHome(args.droidHome, path.join(os.homedir(), ".factory")),
       qwenHome: resolveTargetHome(args.qwenHome, path.join(os.homedir(), ".qwen")),
@@ -161,6 +169,7 @@ async function cleanupTarget(
     opencodeHome: string
     geminiHome: string
     kiroHome: string
+    kimiHome: string
     copilotHome: string
     droidHome: string
     qwenHome: string
@@ -221,6 +230,8 @@ async function cleanupTarget(
     }
     case "kiro":
       return [await cleanupKiro(plugin, roots.kiroHome)]
+    case "kimi":
+      return [await cleanupKimi(plugin, roots.kimiHome)]
     case "copilot": {
       // Same race-prevention as Gemini: if a user points `--copilot-home`,
       // `--output`, or `--agents-home` at the same directory these parallel
@@ -481,6 +492,35 @@ async function cleanupKiro(plugin: Awaited<ReturnType<typeof loadClaudePlugin>>,
     moved += await moveIfExists(managedDir, "agents", path.join(kiroRoot, "agents", "prompts"), `${agentName}.md`, "Kiro")
   }
   return { target: "kiro", root: kiroRoot, moved }
+}
+
+async function cleanupKimi(plugin: Awaited<ReturnType<typeof loadClaudePlugin>>, kimiRoot: string): Promise<CleanupResult> {
+  const bundle = convertClaudeToKimi(plugin, {
+    agentMode: "subagent",
+    inferTemperature: true,
+    permissions: "none",
+  })
+  const artifacts = getLegacyKimiArtifacts(bundle)
+  const skillNames = new Set([
+    ...artifacts.skills,
+    ...bundle.skillDirs.map((skill) => sanitizePathName(skill.name)),
+    ...bundle.generatedSkills.map((skill) => sanitizePathName(skill.name)),
+  ])
+  const agentNames = new Set([
+    ...artifacts.agents,
+    ...bundle.agents.map((agent) => sanitizePathName(agent.name)),
+  ])
+  const managedDir = path.join(kimiRoot, "compound-engineering")
+  let moved = 0
+  for (const skillName of skillNames) {
+    moved += await moveIfExists(managedDir, "skills", path.join(kimiRoot, "skills"), skillName, "Kimi")
+  }
+  for (const agentName of agentNames) {
+    moved += await moveIfExists(managedDir, "agents", path.join(kimiRoot, "agents"), `${agentName}.yaml`, "Kimi")
+  }
+  moved += await moveIfExists(managedDir, "managed", kimiRoot, "AGENTS.md", "Kimi")
+
+  return { target: "kimi", root: kimiRoot, moved }
 }
 
 async function cleanupCopilot(plugin: Awaited<ReturnType<typeof loadClaudePlugin>>, copilotRoot: string): Promise<CleanupResult> {

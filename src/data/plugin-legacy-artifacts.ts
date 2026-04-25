@@ -4,6 +4,7 @@ import type { DroidBundle } from "../types/droid"
 import type { ClaudePlugin } from "../types/claude"
 import type { GeminiBundle } from "../types/gemini"
 import type { KiroBundle } from "../types/kiro"
+import type { KimiBundle } from "../types/kimi"
 import type { OpenCodeBundle } from "../types/opencode"
 import type { PiBundle } from "../types/pi"
 import { sanitizePathName } from "../utils/files"
@@ -263,6 +264,11 @@ export type LegacyKiroArtifacts = {
   agents: string[]
 }
 
+export type LegacyKimiArtifacts = {
+  skills: string[]
+  agents: string[]
+}
+
 export type LegacyCopilotArtifacts = {
   skills: string[]
   agents: string[]
@@ -464,6 +470,43 @@ export function getLegacyOpenCodeArtifacts(bundle: OpenCodeBundle): LegacyOpenCo
 }
 
 export function getLegacyKiroArtifacts(bundle: KiroBundle): LegacyKiroArtifacts {
+  const skills = new Set<string>()
+  const agents = new Set<string>()
+  const currentSkills = new Set<string>([
+    ...bundle.generatedSkills.map((skill) => sanitizePathName(skill.name)),
+    ...bundle.skillDirs.map((skill) => sanitizePathName(skill.name)),
+  ])
+  const currentAgents = new Set<string>(bundle.agents.map((agent) => sanitizePathName(agent.name)))
+  const extras = getLegacyPluginArtifacts(bundle.pluginName)
+
+  for (const name of extras.skills ?? []) {
+    addLegacySkillVariants(skills, name, { currentSkills })
+  }
+  for (const name of extras.agents ?? []) {
+    const skillName = normalizeLegacyName(name)
+    if (!currentSkills.has(skillName)) {
+      skills.add(skillName)
+    }
+    const agentName = normalizeLegacyName(name)
+    if (!currentAgents.has(agentName)) {
+      agents.add(agentName)
+    }
+  }
+  for (const name of extras.commands ?? []) {
+    for (const skillName of legacyCommandSkillNames(name)) {
+      if (!currentSkills.has(skillName)) {
+        skills.add(skillName)
+      }
+    }
+  }
+
+  return {
+    skills: [...skills].sort(),
+    agents: [...agents].sort(),
+  }
+}
+
+export function getLegacyKimiArtifacts(bundle: KimiBundle): LegacyKimiArtifacts {
   const skills = new Set<string>()
   const agents = new Set<string>()
   const currentSkills = new Set<string>([

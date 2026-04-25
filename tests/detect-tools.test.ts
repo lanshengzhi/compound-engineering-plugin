@@ -45,7 +45,7 @@ describe("detectInstalledTools", () => {
 
     const results = await detectInstalledTools(tempHome, tempCwd)
 
-    expect(results.length).toBe(8)
+    expect(results.length).toBe(9)
     for (const tool of results) {
       expect(tool.detected).toBe(false)
       expect(tool.reason).toBe("not found")
@@ -65,6 +65,20 @@ describe("detectInstalledTools", () => {
     expect(results.find((t) => t.name === "opencode")?.detected).toBe(true)
     expect(results.find((t) => t.name === "droid")?.detected).toBe(true)
     expect(results.find((t) => t.name === "pi")?.detected).toBe(true)
+  })
+
+  test("detects kimi in home and cwd", async () => {
+    const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "detect-kimi-home-"))
+    const tempCwd = await fs.mkdtemp(path.join(os.tmpdir(), "detect-kimi-cwd-"))
+
+    await fs.mkdir(path.join(tempHome, ".kimi"), { recursive: true })
+    let results = await detectInstalledTools(tempHome, tempCwd)
+    expect(results.find((t) => t.name === "kimi")?.detected).toBe(true)
+
+    await fs.rm(path.join(tempHome, ".kimi"), { recursive: true })
+    await fs.mkdir(path.join(tempCwd, ".kimi"), { recursive: true })
+    results = await detectInstalledTools(tempHome, tempCwd)
+    expect(results.find((t) => t.name === "kimi")?.detected).toBe(true)
   })
 
   describe("opencode OPENCODE_CONFIG_DIR", () => {

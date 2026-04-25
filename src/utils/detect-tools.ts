@@ -67,6 +67,13 @@ const detectableTools: DetectableTool[] = [
     ],
   },
   {
+    name: "kimi",
+    detectPaths: (home, cwd) => [
+      path.join(home, ".kimi"),
+      path.join(cwd, ".kimi"),
+    ],
+  },
+  {
     name: "qwen",
     detectPaths: (home, cwd) => [
       path.join(home, ".qwen"),

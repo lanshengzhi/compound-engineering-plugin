@@ -182,15 +182,16 @@ If you previously used the old Bun Qwen install, back up stale CE artifacts befo
 bunx @every-env/compound-plugin cleanup --target qwen
 ```
 
-### OpenCode, Pi, Gemini, and Kiro
+### OpenCode, Pi, Gemini, Kiro, and Kimi
 
-This repo includes a Bun/TypeScript installer that converts the Compound Engineering plugin to OpenCode, Pi, Gemini CLI, and Kiro CLI.
+This repo includes a Bun/TypeScript installer that converts the Compound Engineering plugin to OpenCode, Pi, Gemini CLI, Kiro CLI, and Kimi CLI.
 
 ```bash
 bunx @every-env/compound-plugin install compound-engineering --to opencode
 bunx @every-env/compound-plugin install compound-engineering --to pi
 bunx @every-env/compound-plugin install compound-engineering --to gemini
 bunx @every-env/compound-plugin install compound-engineering --to kiro
+bunx @every-env/compound-plugin install compound-engineering --to kimi
 ```
 
 **Pi prerequisites.** Pi does not ship a native subagent primitive, so the Pi install depends on [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) (required) and recommends [edlsh/pi-ask-user](https://github.com/edlsh/pi-ask-user) for richer blocking user questions:
