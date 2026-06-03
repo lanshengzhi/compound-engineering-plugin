@@ -24,13 +24,15 @@ If a version is found, pass it to the check script via `--version`. Otherwise om
 
 Before running the script, display: "Compound Engineering -- checking your environment..."
 
-Run the bundled check script. Do not perform manual dependency checks -- the script handles all CLI tools, agent skills, repo-local CE file checks, and `.gitignore` guidance in one pass.
+Run the bundled check script. Do not perform manual dependency checks -- the script handles all CLI tools, agent skills, repo-local CE file checks, Pi capability readiness, and `.gitignore` guidance in one pass.
+
+If the user supplied an explicit Pi root, pass it with `--pi-home`. Otherwise omit it and let the script probe the workspace `.pi` root before `$HOME/.pi/agent`.
 
 ```bash
-bash scripts/check-health --version VERSION
+bash scripts/check-health --version VERSION --pi-home PI_HOME
 ```
 
-Or without version if Step 1 could not determine it:
+Or without version/Pi root if Step 1 could not determine them:
 
 ```bash
 bash scripts/check-health
@@ -50,11 +52,14 @@ After the diagnostic report, check whether:
 
 - any CLI tools are missing (reported as yellow in the Tools section)
 - any agent skills are missing (reported as yellow in the Skills section)
+- the Pi capability matrix reports `Subagent delegation: blocked` (required for delegated Pi workflows)
 - `compound-engineering.local.md` is present and needs cleanup
 - `.compound-engineering/config.local.yaml` does not exist or is not safely gitignored
 - `.compound-engineering/config.local.example.yaml` is missing or outdated
 
-If everything is installed, no repo-local cleanup is needed, and `.compound-engineering/config.local.yaml` already exists and is gitignored, display the tool and skill list and completion message. Parse the tool and skill names from the script output and list each with a green circle. Omit the Skills line if the Skills section is absent from the script output:
+Optional Pi accelerators reported as `degraded` in the matrix (context compression, code intelligence, task tracking, web research, or structured questions) are readiness signals, not generic setup failures. Explain the degraded workflow and fallback, but do not route to dependency installation unless the user asks.
+
+If everything is installed, no repo-local cleanup is needed, and `.compound-engineering/config.local.yaml` already exists and is gitignored, display the tool, skill, and Pi capability list and completion message. Parse the tool, skill, and Pi capability names from the script output and list installed/full/active-or-unverified rows with a green circle. Omit the Skills line if the Skills section is absent from the script output:
 
 ```
  ✅ Compound Engineering setup complete

@@ -36,9 +36,11 @@ skills=(
 # --version VERSION  (optional) plugin version to display (passed by the agent)
 
 plugin_version=""
+pi_home_arg=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --version) [ -n "$2" ] && plugin_version="$2" && shift 2 || shift ;;
+    --pi-home) [ -n "$2" ] && pi_home_arg="$2" && shift 2 || shift ;;
     *) shift ;;
   esac
 done
@@ -53,6 +55,10 @@ warn()    { echo "  🟡  $1"; }
 skip()    { echo "  ➖  $1"; }
 detail()  { echo "       $1"; }
 section() { echo ""; echo " $1"; }
+cap_ok()  { echo "  🟢  $1: $2"; }
+cap_warn(){ echo "  🟡  $1: $2"; }
+cap_fail(){ echo "  🔴  $1: $2"; }
+cap_skip(){ echo "  ➖  $1: $2"; }
 
 has_brew=$(command -v brew >/dev/null 2>&1 && echo "yes" || echo "no")
 in_repo=$(git rev-parse --is-inside-work-tree >/dev/null 2>&1 && echo "yes" || echo "no")
@@ -167,6 +173,89 @@ if [ "$in_repo" = "yes" ]; then
 fi
 
 # =====================================================
+#  Pi capability checks
+# =====================================================
+
+pi_root=""
+pi_root_source="default"
+resolve_pi_root() {
+  if [ -n "$pi_home_arg" ]; then
+    pi_root_source="--pi-home"
+    pi_root="$pi_home_arg"
+    return
+  fi
+
+  if [ -d ".pi" ]; then
+    pi_root_source="workspace"
+    pi_root="$(pwd)/.pi"
+    return
+  fi
+
+  if [ "$in_repo" = "yes" ] && [ -n "${repo_root:-}" ] && [ -d "$repo_root/.pi" ]; then
+    pi_root_source="workspace"
+    pi_root="$repo_root/.pi"
+    return
+  fi
+
+  pi_root_source="default"
+  pi_root="$HOME/.pi/agent"
+}
+
+resolve_pi_root
+
+pi_package_exists() {
+  local package="$1"
+  [ -d "$pi_root/npm/node_modules/$package" ] && return 0
+  [ -d "$pi_root/node_modules/$package" ] && return 0
+  [ -d "$HOME/.pi/agent/npm/node_modules/$package" ] && return 0
+  return 1
+}
+
+pi_capability_status() {
+  local required="$1"
+  shift
+  local package
+  for package in "$@"; do
+    if pi_package_exists "$package"; then
+      printf '%s\n' "active-or-unverified"
+      return
+    fi
+  done
+
+  if [ "$required" = "required" ]; then
+    printf '%s\n' "blocked"
+  else
+    printf '%s\n' "degraded"
+  fi
+}
+
+pi_has_any_artifacts="no"
+[ -d "$pi_root/skills" ] && pi_has_any_artifacts="yes"
+[ -d "$pi_root/agents" ] && pi_has_any_artifacts="yes"
+[ -d "$pi_root/prompts" ] && pi_has_any_artifacts="yes"
+[ -f "$pi_root/compound-engineering/install-manifest.json" ] && pi_has_any_artifacts="yes"
+
+pi_ce_artifact_status="missing"
+if [ -f "$pi_root/compound-engineering/install-manifest.json" ] \
+  && [ -d "$pi_root/skills" ] \
+  && [ -d "$pi_root/agents" ]; then
+  pi_ce_artifact_status="installed"
+elif [ "$pi_has_any_artifacts" = "yes" ]; then
+  pi_ce_artifact_status="degraded"
+fi
+
+pi_subagent_status=$(pi_capability_status required "pi-subagents")
+pi_question_status=$(pi_capability_status optional "@juicesharp/rpiv-ask-user-question")
+pi_todo_status=$(pi_capability_status optional "@juicesharp/rpiv-todo")
+pi_web_status=$(pi_capability_status optional "pi-web-access")
+pi_context_status=$(pi_capability_status optional "context-mode")
+pi_lens_status=$(pi_capability_status optional "pi-lens")
+
+# Missing pi-subagents blocks delegated CE workflows, but optional Pi
+# accelerators remain diagnostic-only and do not change generic issue counts.
+[ "$pi_subagent_status" = "blocked" ] && issues=$((issues + 1))
+
+# =====================================================
 #  Output
 # =====================================================
 
@@ -214,6 +303,67 @@ if [ "${#skills[@]}" -gt 0 ]; then
     fi
   done
 fi
+
+# --- Pi capability matrix ---
+
+section "Pi capabilities"
+detail "Root: $pi_root ($pi_root_source)"
+
+case "$pi_subagent_status" in
+  active-or-unverified) cap_ok "Subagent delegation" "$pi_subagent_status" ;;
+  blocked) cap_fail "Subagent delegation" "$pi_subagent_status" ;;
+  *) cap_warn "Subagent delegation" "$pi_subagent_status" ;;
+esac
+detail "tool: subagent; package: pi-subagents"
+
+case "$pi_question_status" in
+  active-or-unverified) cap_ok "Structured questions" "$pi_question_status" ;;
+  *) cap_warn "Structured questions" "$pi_question_status" ;;
+esac
+detail "tool: ask_user_question; package: @juicesharp/rpiv-ask-user-question; fallback: numbered-list chat"
+
+case "$pi_todo_status" in
+  active-or-unverified) cap_ok "Task tracking" "$pi_todo_status" ;;
+  *) cap_warn "Task tracking" "$pi_todo_status" ;;
+esac
+detail "tool: todo; package: @juicesharp/rpiv-todo; fallback: transcript or local TODO artifact"
+
+case "$pi_web_status" in
+  active-or-unverified) cap_ok "Web research" "$pi_web_status" ;;
+  *) cap_warn "Web research" "$pi_web_status" ;;
+esac
+detail "tools: web_search, fetch_content, code_search, get_search_content; package: pi-web-access"
+
+case "$pi_context_status" in
+  active-or-unverified) cap_ok "Large-output compression" "$pi_context_status" ;;
+  *) cap_warn "Large-output compression" "$pi_context_status" ;;
+esac
+detail "tools: ctx_batch_execute, ctx_execute, ctx_execute_file; package: context-mode"
+
+case "$pi_context_status" in
+  active-or-unverified) cap_ok "Persistent/session recall" "$pi_context_status" ;;
+  *) cap_warn "Persistent/session recall" "$pi_context_status" ;;
+esac
+detail "tools: ctx_search, ctx_index; package: context-mode"
+
+case "$pi_lens_status" in
+  active-or-unverified) cap_ok "Symbol diagnostics/navigation" "$pi_lens_status" ;;
+  *) cap_warn "Symbol diagnostics/navigation" "$pi_lens_status" ;;
+esac
+detail "tools: lsp_diagnostics, lsp_navigation; package: pi-lens"
+
+case "$pi_lens_status" in
+  active-or-unverified) cap_ok "Structural search/edit" "$pi_lens_status" ;;
+  *) cap_warn "Structural search/edit" "$pi_lens_status" ;;
+esac
+detail "tools: ast_grep_search, ast_grep_replace; package: pi-lens"
+
+case "$pi_ce_artifact_status" in
+  installed) cap_ok "CE artifact presence" "$pi_ce_artifact_status" ;;
+  missing) cap_skip "CE artifact presence" "$pi_ce_artifact_status" ;;
+  *) cap_warn "CE artifact presence" "$pi_ce_artifact_status" ;;
+esac
+detail "paths: skills/, agents/, prompts/, compound-engineering/install-manifest.json"
 
 # --- Project ---
 
