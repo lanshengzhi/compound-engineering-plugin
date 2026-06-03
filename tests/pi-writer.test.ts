@@ -26,6 +26,28 @@ async function pluginDescription(relativePath: string): Promise<string> {
   return data.description
 }
 
+async function readMarkdownFiles(root: string): Promise<Array<{ path: string; content: string }>> {
+  const files: Array<{ path: string; content: string }> = []
+
+  async function visit(dir: string): Promise<void> {
+    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await visit(fullPath)
+        continue
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".md")) continue
+      files.push({
+        path: path.relative(root, fullPath).split(path.sep).join("/"),
+        content: await fs.readFile(fullPath, "utf8"),
+      })
+    }
+  }
+
+  await visit(root)
+  return files.sort((a, b) => a.path.localeCompare(b.path))
+}
+
 describe("writePiBundle", () => {
   test("removes stale generated agent skills without touching prompt files", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "pi-cleanup-targets-"))
@@ -159,6 +181,37 @@ Run these research agents:
     expect(installedReference).toContain("`@juicesharp/rpiv-ask-user-question`")
     expect(installedReference).toContain('Run subagent with agent="repo-research-analyst" and task="topic".')
     expect(installedReference).not.toContain("pi-ask-user")
+  })
+
+  test("compound-engineering Pi runtime markdown has current Pi tool guidance", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "pi-full-output-hygiene-"))
+    const outputRoot = path.join(tempRoot, ".pi")
+    const plugin = await loadClaudePlugin(path.join(import.meta.dir, "..", "plugins", "compound-engineering"))
+    const bundle = convertClaudeToPi(plugin, {
+      agentMode: "subagent",
+      inferTemperature: true,
+      permissions: "none",
+    })
+
+    await writePiBundle(outputRoot, bundle)
+
+    const markdownFiles = await readMarkdownFiles(outputRoot)
+    expect(markdownFiles.some((file) => file.path === "AGENTS.md")).toBe(true)
+    expect(markdownFiles.some((file) => file.path.startsWith("skills/ce-plan/"))).toBe(true)
+    expect(markdownFiles.some((file) => file.path.startsWith("agents/"))).toBe(true)
+
+    const combined = markdownFiles.map((file) => `--- ${file.path} ---\n${file.content}`).join("\n")
+    expect(combined).not.toMatch(/\bpi-ask-user\b/)
+    expect(combined).not.toMatch(/`ask_user` in Pi|Pi `ask_user`|ask_user in Pi/)
+    expect(combined).not.toMatch(/\bToolSearch\b/)
+    expect(combined).not.toMatch(/\bTask(?:Create|Update|List|Get|Stop|Output)\b/)
+    expect(combined).not.toMatch(/\bTodo(?:Write|Read)\b/)
+
+    expect(combined).toContain("ask_user_question")
+    expect(combined).toContain("todo")
+    expect(combined).toContain("web_search")
+    expect(combined).toContain("fetch_content")
+    expect(combined).toContain("otherwise proceed from local evidence and state missing external context")
   })
 
   test("writes to ~/.pi/agent style roots without nesting under .pi", async () => {

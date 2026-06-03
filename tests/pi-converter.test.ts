@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import path from "path"
 import { loadClaudePlugin } from "../src/parsers/claude"
-import { convertClaudeToPi } from "../src/converters/claude-to-pi"
+import { convertClaudeToPi, transformContentForPi } from "../src/converters/claude-to-pi"
 import { parseFrontmatter } from "../src/utils/frontmatter"
 import type { ClaudePlugin } from "../src/types/claude"
 
@@ -123,6 +123,61 @@ describe("convertClaudeToPi", () => {
     expect(parsedPrompt.body).toContain("/workflows-work")
     expect(parsedPrompt.body).toContain("/todo-resolve")
     expect(parsedPrompt.body).toContain("the platform's task-tracking primitive")
+  })
+
+  test("removes Claude ToolSearch question preload prose and normalizes legacy Pi ask-user wording", () => {
+    const plugin: ClaudePlugin = {
+      root: "/tmp/plugin",
+      manifest: { name: "fixture", version: "1.0.0" },
+      agents: [],
+      commands: [
+        {
+          name: "question-flow",
+          description: "Question flow",
+          body: [
+            "Use `AskUserQuestion` in Claude Code (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded).",
+            "In Claude Code, call `ToolSearch` with query `select:AskUserQuestion` before asking the question.",
+            "Fallback triggers are unavailable tools — `ToolSearch` returns no match, the tool call explicitly fails, or the runtime mode does not expose it.",
+            "Ask with `ask_user` in Pi (requires the `pi-ask-user` extension).",
+          ].join("\n"),
+          sourcePath: "/tmp/plugin/commands/question-flow.md",
+        },
+      ],
+      skills: [],
+      hooks: undefined,
+      mcpServers: undefined,
+    }
+
+    const bundle = convertClaudeToPi(plugin, {
+      agentMode: "subagent",
+      inferTemperature: false,
+      permissions: "none",
+    })
+
+    const parsedPrompt = parseFrontmatter(bundle.prompts[0].content)
+    expect(parsedPrompt.body).toContain("`AskUserQuestion` in Claude Code")
+    expect(parsedPrompt.body).toContain("`ask_user_question` in Pi")
+    expect(parsedPrompt.body).toContain("`@juicesharp/rpiv-ask-user-question`")
+    expect(parsedPrompt.body).not.toContain("ToolSearch")
+    expect(parsedPrompt.body).not.toContain("select:AskUserQuestion")
+    expect(parsedPrompt.body).not.toContain("pi-ask-user")
+    expect(parsedPrompt.body).not.toContain("`ask_user` in Pi")
+  })
+
+  test("preserves ordinary slash paths and URLs while normalizing command names", () => {
+    const body = [
+      "Visit https://example.com/foo/bar?x=/keep and keep /tmp/example, /home/user/file, and /usr/local/bin intact.",
+      "Then run /workflows:plan and /skill:CePlan.",
+    ].join("\n")
+
+    const transformed = transformContentForPi(body)
+
+    expect(transformed).toContain("https://example.com/foo/bar?x=/keep")
+    expect(transformed).toContain("/tmp/example")
+    expect(transformed).toContain("/home/user/file")
+    expect(transformed).toContain("/usr/local/bin")
+    expect(transformed).toContain("/workflows-plan")
+    expect(transformed).toContain("/skill:ceplan")
   })
 
   test("transforms current Claude Code Task* task-tracking primitives to platform-generic text", () => {

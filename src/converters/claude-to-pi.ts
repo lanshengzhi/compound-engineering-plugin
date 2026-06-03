@@ -155,7 +155,30 @@ export function transformContentForPi(body: string): string {
     "",
   )
   result = result.replace(/\s*A pending schema load is not a fallback trigger\./g, "")
+  result = result.replace(/\s*A pending schema load is not a fallback trigger; call `ToolSearch` first per the pre-load rule\./g, "")
   result = result.replace(/ — not because a schema load is required/g, "")
+  result = result.replace(
+    /Only when `ToolSearch` explicitly returns no match or the tool call errors — or on a platform with no blocking question tool — fall back/g,
+    "Only when the blocking question tool is unavailable or the tool call errors, fall back",
+  )
+  result = result.replace(
+    /The numbered-list text fallback applies when `ToolSearch` explicitly returns no match for the platform's question tool or the tool call errors/g,
+    "The numbered-list text fallback applies when the blocking question tool is unavailable or the tool call errors",
+  )
+  result = result.replace(
+    /The numbered-list text fallback applies when `ToolSearch` explicitly returns no match or the tool call errors/g,
+    "The numbered-list text fallback applies when the blocking question tool is unavailable or the tool call errors",
+  )
+  result = result.replace(
+    /Numbered-list fallback applies when `ToolSearch` explicitly returns no match or the tool call errors/g,
+    "Numbered-list fallback applies when the blocking question tool is unavailable or the tool call errors",
+  )
+  result = result.replace(
+    /On Codex, Gemini, and Pi this checklist does not apply — there is no `ToolSearch` preload step to perform\.\s*/g,
+    "On Codex, Gemini, and Pi this checklist does not apply. ",
+  )
+  result = result.replace(/`ToolSearch`/g, "the blocking question tool")
+  result = result.replace(/\bToolSearch\b/g, "the blocking question tool")
   result = result.replace(
     /`ask_user` in Pi \(requires the `pi-ask-user` extension\)/g,
     "`ask_user_question` in Pi (provided by `@juicesharp/rpiv-ask-user-question`)",
@@ -219,9 +242,9 @@ function buildPiToolCompatibilityNote(exposedTools: string[] | undefined): strin
     "When these instructions mention Claude Code tool names, use the Pi equivalent:",
     "- Read -> read; Bash -> bash; Edit -> edit; Write -> write",
     "- Grep -> grep; Glob -> find; LS -> ls",
-    "- WebSearch -> web_search and WebFetch -> fetch_content when `pi-web-access` is installed",
+    "- WebSearch -> web_search and WebFetch -> fetch_content when `pi-web-access` is installed; otherwise proceed from local evidence and state missing external context",
     "- AskUserQuestion -> ask_user_question when `@juicesharp/rpiv-ask-user-question` is installed",
-    "- TodoWrite/TodoRead/Task* -> todo when `@juicesharp/rpiv-todo` is installed; otherwise keep task state in the platform task tracker or a TODO.md file",
+    "- Claude task-tracking primitives -> todo when `@juicesharp/rpiv-todo` is installed; otherwise keep task state in the platform task tracker or a TODO.md file",
     "- Task agent dispatch -> subagent when `pi-subagents` is installed",
   ]
 

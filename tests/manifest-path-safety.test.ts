@@ -11,6 +11,7 @@ import {
 } from "../src/targets/managed-artifacts"
 import { readCodexInstallManifest } from "../src/targets/codex"
 import {
+  cleanupRemovedPiAgents,
   cleanupRemovedPiExtensions,
   cleanupRemovedPiPrompts,
   cleanupRemovedPiSkills,
@@ -259,7 +260,7 @@ describe("readPiInstallManifest filters unsafe entries", () => {
     await fs.rm(tempRoot, { recursive: true, force: true })
   })
 
-  test("drops traversal/absolute entries from skills, prompts, extensions", async () => {
+  test("drops traversal/absolute entries from skills, prompts, extensions, agents", async () => {
     const piRoot = path.join(tempRoot, ".pi")
     const managedDir = path.join(piRoot, "compound-engineering")
     await fs.mkdir(managedDir, { recursive: true })
@@ -268,6 +269,7 @@ describe("readPiInstallManifest filters unsafe entries", () => {
       skillsDir: path.join(piRoot, "skills"),
       promptsDir: path.join(piRoot, "prompts"),
       extensionsDir: path.join(piRoot, "extensions"),
+      agentsDir: path.join(piRoot, "agents"),
       mcporterConfigPath: path.join(managedDir, "mcporter.json"),
       agentsPath: path.join(piRoot, "AGENTS.md"),
     }
@@ -277,6 +279,7 @@ describe("readPiInstallManifest filters unsafe entries", () => {
       skills: ["safe-skill", "../../../etc/passwd", "/etc/passwd", "foo/../../escape"],
       prompts: ["ok.md", "../../evil.md", "foo/../bar.md"],
       extensions: ["safe.ext", "/tmp/abs.ext", "..\\escape.ext"],
+      agents: ["safe-agent.md", "/tmp/abs-agent.md", "../escape-agent.md"],
     }
     await fs.writeFile(path.join(managedDir, "install-manifest.json"), JSON.stringify(manifest))
 
@@ -285,6 +288,7 @@ describe("readPiInstallManifest filters unsafe entries", () => {
     expect(result!.skills).toEqual(["safe-skill"])
     expect(result!.prompts).toEqual(["ok.md"])
     expect(result!.extensions).toEqual(["safe.ext"])
+    expect(result!.agents).toEqual(["safe-agent.md"])
   })
 
   test("keeps all entries when all are safe", async () => {
@@ -296,6 +300,7 @@ describe("readPiInstallManifest filters unsafe entries", () => {
       skillsDir: path.join(piRoot, "skills"),
       promptsDir: path.join(piRoot, "prompts"),
       extensionsDir: path.join(piRoot, "extensions"),
+      agentsDir: path.join(piRoot, "agents"),
       mcporterConfigPath: path.join(managedDir, "mcporter.json"),
       agentsPath: path.join(piRoot, "AGENTS.md"),
     }
@@ -305,6 +310,7 @@ describe("readPiInstallManifest filters unsafe entries", () => {
       skills: ["a", "b", "c"],
       prompts: ["p.md"],
       extensions: ["ext.js"],
+      agents: ["agent.md"],
     }
     await fs.writeFile(path.join(managedDir, "install-manifest.json"), JSON.stringify(manifest))
 
@@ -313,6 +319,7 @@ describe("readPiInstallManifest filters unsafe entries", () => {
     expect(result!.skills).toEqual(["a", "b", "c"])
     expect(result!.prompts).toEqual(["p.md"])
     expect(result!.extensions).toEqual(["ext.js"])
+    expect(result!.agents).toEqual(["agent.md"])
   })
 })
 
@@ -340,6 +347,7 @@ describe("Pi cleanup helpers do not escape root (defense in depth)", () => {
       skills: ["../outside-skill", "/etc/passwd"],
       prompts: [],
       extensions: [],
+      agents: [],
     }
 
     await cleanupRemovedPiSkills(skillsDir, hostileManifest, [])
@@ -358,6 +366,7 @@ describe("Pi cleanup helpers do not escape root (defense in depth)", () => {
       skills: [],
       prompts: ["../outside.txt", "/etc/passwd"],
       extensions: [],
+      agents: [],
     }
 
     await cleanupRemovedPiPrompts(promptsDir, hostileManifest, [])
@@ -376,9 +385,29 @@ describe("Pi cleanup helpers do not escape root (defense in depth)", () => {
       skills: [],
       prompts: [],
       extensions: ["../outside-ext", "/etc/passwd", "foo/../../escape"],
+      agents: [],
     }
 
     await cleanupRemovedPiExtensions(extensionsDir, hostileManifest, [])
+    expect(await fs.readFile(outsideFile, "utf8")).toBe("keep me")
+  })
+
+  test("cleanupRemovedPiAgents skips unsafe entries fed directly", async () => {
+    const agentsDir = path.join(tempRoot, "agents")
+    await fs.mkdir(agentsDir, { recursive: true })
+    const outsideFile = path.join(tempRoot, "outside-agent.md")
+    await fs.writeFile(outsideFile, "keep me")
+
+    const hostileManifest = {
+      version: 1 as const,
+      pluginName: "compound-engineering",
+      skills: [],
+      prompts: [],
+      extensions: [],
+      agents: ["../outside-agent.md", "/etc/passwd", "foo/../../escape.md"],
+    }
+
+    await cleanupRemovedPiAgents(agentsDir, hostileManifest, [])
     expect(await fs.readFile(outsideFile, "utf8")).toBe("keep me")
   })
 
@@ -386,9 +415,11 @@ describe("Pi cleanup helpers do not escape root (defense in depth)", () => {
     const skillsDir = path.join(tempRoot, "skills")
     const promptsDir = path.join(tempRoot, "prompts")
     const extensionsDir = path.join(tempRoot, "extensions")
+    const agentsDir = path.join(tempRoot, "agents")
     await fs.mkdir(skillsDir, { recursive: true })
     await fs.mkdir(promptsDir, { recursive: true })
     await fs.mkdir(extensionsDir, { recursive: true })
+    await fs.mkdir(agentsDir, { recursive: true })
 
     const staleSkillDir = path.join(skillsDir, "stale-skill")
     await fs.mkdir(staleSkillDir)
@@ -397,6 +428,8 @@ describe("Pi cleanup helpers do not escape root (defense in depth)", () => {
     await fs.writeFile(stalePrompt, "old")
     const staleExt = path.join(extensionsDir, "stale.ext")
     await fs.writeFile(staleExt, "old")
+    const staleAgent = path.join(agentsDir, "stale-agent.md")
+    await fs.writeFile(staleAgent, "old")
 
     const manifest = {
       version: 1 as const,
@@ -404,13 +437,15 @@ describe("Pi cleanup helpers do not escape root (defense in depth)", () => {
       skills: ["stale-skill"],
       prompts: ["stale.md"],
       extensions: ["stale.ext"],
+      agents: ["stale-agent.md"],
     }
 
     await cleanupRemovedPiSkills(skillsDir, manifest, [])
     await cleanupRemovedPiPrompts(promptsDir, manifest, [])
     await cleanupRemovedPiExtensions(extensionsDir, manifest, [])
+    await cleanupRemovedPiAgents(agentsDir, manifest, [])
 
-    for (const p of [staleSkillDir, stalePrompt, staleExt]) {
+    for (const p of [staleSkillDir, stalePrompt, staleExt, staleAgent]) {
       let exists = true
       try {
         await fs.stat(p)
