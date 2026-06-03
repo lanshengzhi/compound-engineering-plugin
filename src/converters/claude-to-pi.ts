@@ -143,15 +143,31 @@ export function transformContentForPi(body: string): string {
     "`AskUserQuestion` in Claude Code",
   )
   result = result.replace(
-    /In Claude Code[\s\S]*?call `ToolSearch` with (?:query )?`?select:AskUserQuestion`?[^.]*\.\s*/g,
+    /\s*In Claude Code[^\n.]*call `ToolSearch` with (?:query )?`?select:AskUserQuestion`?[^.\n]*\./g,
     "",
+  )
+  result = result.replace(
+    /\s*At the start of Interactive-mode work[^.\n]*call `ToolSearch` with (?:query )?`?select:AskUserQuestion`?[^.\n]*\./g,
+    "",
+  )
+  result = result.replace(
+    /\s*If not yet loaded this session, call `ToolSearch` with (?:query )?`?select:AskUserQuestion`?[^.\n]*\./g,
+    "",
+  )
+  result = result.replace(
+    /\s*(?:Later,\s*)?call `ToolSearch` with (?:query )?`?select:AskUserQuestion`?[^.\n]*(?:\.|$)/gm,
+    "",
+  )
+  result = result.replace(
+    /\s*— if it isn't, call `ToolSearch` with (?:query )?`?select:AskUserQuestion`?[^.\n]*\./g,
+    ".",
   )
   result = result.replace(
     / — `ToolSearch` returns no match, the tool call explicitly fails, or the runtime mode does not expose it/g,
     ", the tool call explicitly fails, or the runtime mode does not expose it",
   )
   result = result.replace(
-    /\s*\*\*Claude Code only:\*\*[^.]*call `ToolSearch` with query `select:AskUserQuestion`[^.]*\./g,
+    /\s*\*\*Claude Code only:\*\*[^.\n]*call `ToolSearch` with query `select:AskUserQuestion`[^.\n]*\./g,
     "",
   )
   result = result.replace(/\s*A pending schema load is not a fallback trigger\./g, "")
@@ -177,8 +193,7 @@ export function transformContentForPi(body: string): string {
     /On Codex, Gemini, and Pi this checklist does not apply — there is no `ToolSearch` preload step to perform\.\s*/g,
     "On Codex, Gemini, and Pi this checklist does not apply. ",
   )
-  result = result.replace(/`ToolSearch`/g, "the blocking question tool")
-  result = result.replace(/\bToolSearch\b/g, "the blocking question tool")
+  result = result.replace(/ToolSearch in Claude Code/g, "native tool discovery in Claude Code")
   result = result.replace(
     /`ask_user` in Pi \(requires the `pi-ask-user` extension\)/g,
     "`ask_user_question` in Pi (provided by `@juicesharp/rpiv-ask-user-question`)",
@@ -311,7 +326,7 @@ function mapClaudeToolsForPi(tools: string[] | undefined): string[] | undefined 
 function mapClaudeToolForPi(tool: string): string[] {
   const raw = tool.trim()
   if (!raw) return []
-  if (raw.startsWith("mcp__") || raw.startsWith("mcp:")) return []
+  if (raw.startsWith("mcp__") || raw.startsWith("mcp:")) return [raw]
 
   const base = raw.replace(/\(.*/, "").trim()
   const lower = base.toLowerCase()

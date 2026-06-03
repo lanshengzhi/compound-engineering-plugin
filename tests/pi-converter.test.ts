@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test"
+import { promises as fs } from "fs"
+import os from "os"
 import path from "path"
 import { loadClaudePlugin } from "../src/parsers/claude"
 import { convertClaudeToPi, transformContentForPi } from "../src/converters/claude-to-pi"
@@ -164,6 +166,39 @@ describe("convertClaudeToPi", () => {
     expect(parsedPrompt.body).not.toContain("`ask_user` in Pi")
   })
 
+  test("does not delete unrelated content when removing ToolSearch question preload prose", () => {
+    const body = [
+      "In Claude Code, this unrelated paragraph describes review workflow constraints.",
+      "Keep this middle content; it is not part of question-tool preload guidance.",
+      "Later, call `ToolSearch` with query `select:AskUserQuestion` before asking the question.",
+      "At the start of Interactive-mode work",
+      "Keep this second middle content; it is also unrelated.",
+      "call `ToolSearch` with query `select:AskUserQuestion`",
+      "Keep this third middle content; it follows a wrapped preload line.",
+      "Important unrelated sentence. In Claude Code, call `ToolSearch` with query `select:AskUserQuestion` before asking. Keep after.",
+    ].join("\n")
+
+    const transformed = transformContentForPi(body)
+
+    expect(transformed).toContain("Keep this middle content")
+    expect(transformed).toContain("Keep this second middle content")
+    expect(transformed).toContain("Keep this third middle content")
+    expect(transformed).toContain("Important unrelated sentence.")
+    expect(transformed).toContain("Keep after.")
+    expect(transformed).not.toContain("ToolSearch")
+    expect(transformed).not.toContain("select:AskUserQuestion")
+  })
+
+  test("converts non-question ToolSearch examples to native discovery wording", () => {
+    const transformed = transformContentForPi(
+      "Search for Slack tools using the platform's tool discovery mechanism (e.g., ToolSearch in Claude Code, tool listing, or schema inspection).",
+    )
+
+    expect(transformed).toContain("native tool discovery in Claude Code")
+    expect(transformed).not.toContain("blocking question tool")
+    expect(transformed).not.toContain("ToolSearch")
+  })
+
   test("preserves ordinary slash paths and URLs while normalizing command names", () => {
     const body = [
       "Visit https://example.com/foo/bar?x=/keep and keep /tmp/example, /home/user/file, and /usr/local/bin intact.",
@@ -305,7 +340,7 @@ describe("convertClaudeToPi", () => {
     })
 
     const parsedAgent = parseFrontmatter(bundle.agents[0].content)
-    expect(parsedAgent.data.tools).toBe("read, grep, find, bash, fetch_content, web_search, ask_user_question, todo, subagent")
+    expect(parsedAgent.data.tools).toBe("read, grep, find, bash, fetch_content, web_search, ask_user_question, todo, subagent, mcp__context7__*")
     expect(parsedAgent.body).toContain("## Pi tool compatibility")
     expect(parsedAgent.body).toContain("WebSearch -> web_search")
     expect(parsedAgent.body).toContain("AskUserQuestion -> ask_user_question")
@@ -313,6 +348,42 @@ describe("convertClaudeToPi", () => {
     expect(parsedAgent.body).not.toContain("pi-lens")
     expect(parsedAgent.body).not.toContain("context-mode")
     expect(parsedAgent.body).toContain("Use ask_user_question tool")
+  })
+
+  test("loads agent tools frontmatter through the parser and preserves MCP exposure", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "pi-agent-tools-parser-"))
+    try {
+      await fs.mkdir(path.join(tempRoot, ".claude-plugin"), { recursive: true })
+      await fs.mkdir(path.join(tempRoot, "agents"), { recursive: true })
+      await fs.writeFile(
+        path.join(tempRoot, ".claude-plugin", "plugin.json"),
+        JSON.stringify({ name: "fixture", version: "1.0.0" }),
+      )
+      await fs.writeFile(
+        path.join(tempRoot, "agents", "docs.md"),
+        [
+          "---",
+          "name: docs-researcher",
+          "description: Docs researcher",
+          "tools: Read, WebFetch, mcp__context7__*",
+          "---",
+          "",
+          "Prefer Context7 MCP when connected; otherwise use WebFetch.",
+        ].join("\n"),
+      )
+
+      const plugin = await loadClaudePlugin(tempRoot)
+      const bundle = convertClaudeToPi(plugin, {
+        agentMode: "subagent",
+        inferTemperature: false,
+        permissions: "none",
+      })
+
+      const parsedAgent = parseFrontmatter(bundle.agents[0].content)
+      expect(parsedAgent.data.tools).toBe("read, fetch_content, mcp__context7__*")
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true })
+    }
   })
 
   test("preserves Pi expert accelerator tools and scopes compatibility guidance to exposed tools", () => {

@@ -185,9 +185,21 @@ resolve_pi_root() {
     return
   fi
 
+  if [ -d ".pi/agent" ]; then
+    pi_root_source="default"
+    pi_root="$(pwd)/.pi/agent"
+    return
+  fi
+
   if [ -d ".pi" ]; then
     pi_root_source="workspace"
     pi_root="$(pwd)/.pi"
+    return
+  fi
+
+  if [ "$in_repo" = "yes" ] && [ -n "${repo_root:-}" ] && [ -d "$repo_root/.pi/agent" ]; then
+    pi_root_source="default"
+    pi_root="$repo_root/.pi/agent"
     return
   fi
 
@@ -207,7 +219,6 @@ pi_package_exists() {
   local package="$1"
   [ -d "$pi_root/npm/node_modules/$package" ] && return 0
   [ -d "$pi_root/node_modules/$package" ] && return 0
-  [ -d "$HOME/.pi/agent/npm/node_modules/$package" ] && return 0
   return 1
 }
 
@@ -251,9 +262,8 @@ pi_web_status=$(pi_capability_status optional "pi-web-access")
 pi_context_status=$(pi_capability_status optional "context-mode")
 pi_lens_status=$(pi_capability_status optional "pi-lens")
 
-# Missing pi-subagents blocks delegated CE workflows, but optional Pi
-# accelerators remain diagnostic-only and do not change generic issue counts.
-[ "$pi_subagent_status" = "blocked" ] && issues=$((issues + 1))
+# Missing pi-subagents blocks delegated Pi workflows in the matrix, but Pi
+# readiness remains diagnostic-only and does not change generic issue counts.
 
 # =====================================================
 #  Output

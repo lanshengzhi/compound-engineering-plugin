@@ -19,7 +19,7 @@ This workflow produces a durable implementation plan. It does **not** implement 
 Prefer platform-native tooling for this workflow:
 - Use large-output compression for broad repository scans, research output, and plan references, and use persistent/session recall for prior decisions, indexed docs, and related learnings.
 - Use web research when framework, API, or external best-practice context could affect the plan; state missing external context when web access is unavailable.
-- Use task tracking for multi-step planning work and subagent delegation for deepening or persona review passes when the platform supports them.
+- Use task tracking for multi-step planning work (Claude Code `TaskCreate`/`TaskUpdate`/`TaskList`, Codex `update_plan`, Pi `todo`) and subagent delegation for deepening or persona review passes (Claude Code `Agent`/`Task`, Codex `spawn_agent`, Pi `subagent`) when the platform supports them.
 - Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
 
 ## Interaction Method

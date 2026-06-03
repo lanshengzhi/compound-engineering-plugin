@@ -78,14 +78,27 @@ describe("Pi runtime dogfood eval contract", () => {
       expect(suite.run_record_required_fields).toContain(field)
     }
 
+    const allowedStatuses = new Set(["blocked", "degraded", "active-or-unverified", "installed", "missing"])
     for (const evalCase of suite.evals) {
       expect(evalCase.pi_root_kind).toBe("temp")
       expect(["fresh_after_install", "stale_after_install"]).toContain(evalCase.session_freshness)
       expect(Array.isArray(evalCase.extension_set)).toBe(true)
       expect(evalCase.expected_evidence.length).toBeGreaterThan(0)
       for (const row of requiredRows) {
-        expect(evalCase.expected_matrix[row], `${evalCase.id} missing ${row}`).toBeDefined()
+        const status = evalCase.expected_matrix[row]
+        expect(status, `${evalCase.id} missing ${row}`).toBeDefined()
+        expect(allowedStatuses.has(status), `${evalCase.id} invalid status for ${row}`).toBe(true)
       }
+      const installed = new Set(evalCase.extension_set)
+      expect(evalCase.expected_matrix["Subagent delegation"]).toBe(
+        installed.has("pi-subagents") ? "active-or-unverified" : "blocked",
+      )
+      expect(evalCase.expected_matrix["Large-output compression"]).toBe(
+        installed.has("context-mode") ? "active-or-unverified" : "degraded",
+      )
+      expect(evalCase.expected_matrix["Structural search/edit"]).toBe(
+        installed.has("pi-lens") ? "active-or-unverified" : "degraded",
+      )
     }
   })
 

@@ -66,7 +66,13 @@ describe("Pi tool guidance contract", () => {
       const installed = await readInstalledSkill(outputRoot, skillName)
       if (capabilities.includes("large-output compression") || capabilities.includes("persistent/session recall")) {
         expect(installed, `${skillName} should name context-mode`).toContain("context-mode")
+      }
+      if (capabilities.includes("large-output compression")) {
         expect(installed, `${skillName} should name ctx_execute`).toContain("ctx_execute")
+      }
+      if (capabilities.includes("persistent/session recall")) {
+        expect(installed, `${skillName} should name ctx_search`).toContain("ctx_search")
+        expect(installed, `${skillName} should name ctx_index`).toContain("ctx_index")
       }
       if (capabilities.includes("symbol diagnostics/navigation") || capabilities.includes("structural search/edit")) {
         expect(installed, `${skillName} should name pi-lens`).toContain("pi-lens")
@@ -86,6 +92,9 @@ describe("Pi tool guidance contract", () => {
       if (capabilities.includes("web research")) {
         expect(installed, `${skillName} should name web_search`).toContain("web_search")
         expect(installed, `${skillName} should name fetch_content`).toContain("fetch_content")
+      }
+      if (capabilities.includes("blocking question tools")) {
+        expect(installed, `${skillName} should name ask_user_question`).toContain("ask_user_question")
       }
     }
   })

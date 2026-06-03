@@ -104,6 +104,22 @@ describe("ce-setup check-health", () => {
     }
   })
 
+  test("does not let an explicit empty Pi root inherit default-home packages", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ce-setup-pi-explicit-empty-"))
+    const explicitPiHome = path.join(root, "explicit-agent")
+
+    try {
+      await mkdir(path.join(root, ".pi", "agent", "npm", "node_modules", "pi-subagents"), { recursive: true })
+      const result = await runCheckHealth(root, "/usr/bin:/bin", ["--pi-home", explicitPiHome])
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stdout).toContain(`Root: ${explicitPiHome} (--pi-home)`)
+      expect(result.stdout).toContain("Subagent delegation: blocked")
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   test("reports converted CE artifact presence under an explicit Pi root", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "ce-setup-pi-artifacts-"))
     const piHome = path.join(root, ".pi")
@@ -122,6 +138,60 @@ describe("ce-setup check-health", () => {
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toContain(`Root: ${piHome} (--pi-home)`)
       expect(result.stdout).toContain("CE artifact presence: installed")
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("reports partial converted CE artifact state as degraded", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ce-setup-pi-partial-artifacts-"))
+    const piHome = path.join(root, ".pi")
+
+    try {
+      await mkdir(path.join(piHome, "skills", "ce-plan"), { recursive: true })
+      const result = await runCheckHealth(root, "/usr/bin:/bin", ["--pi-home", piHome])
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stdout).toContain("CE artifact presence: degraded")
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("does not count missing Pi delegation as a generic setup issue", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ce-setup-non-pi-all-clear-"))
+
+    try {
+      await mkdir(path.join(root, ".agents", "skills", "ast-grep"), { recursive: true })
+      const binDir = path.join(root, "bin")
+      for (const commandName of ["agent-browser", "gh", "jq", "vhs", "silicon", "ffmpeg", "ast-grep"]) {
+        await writeExecutable(path.join(binDir, commandName), "#!/usr/bin/env bash\nexit 0\n")
+      }
+      await writeExecutable(
+        path.join(binDir, "npx"),
+        "#!/usr/bin/env bash\nprintf '%s\\n' '[{\"name\":\"ast-grep\"}]'\n",
+      )
+
+      const result = await runCheckHealth(root, `${binDir}:/usr/bin:/bin`)
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stdout).toContain("Subagent delegation: blocked")
+      expect(result.stdout).toContain("All clear  7/7 tools  1/1 skills")
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("detects default ~/.pi/agent when running from a home directory that also contains .pi", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ce-setup-pi-home-agent-"))
+
+    try {
+      await mkdir(path.join(root, ".pi", "agent", "npm", "node_modules", "pi-subagents"), { recursive: true })
+      const result = await runCheckHealth(root, "/usr/bin:/bin", [], root)
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stdout).toContain(`Root: ${path.join(root, ".pi", "agent")} (default)`)
+      expect(result.stdout).toContain("Subagent delegation: active-or-unverified")
     } finally {
       await rm(root, { recursive: true, force: true })
     }
