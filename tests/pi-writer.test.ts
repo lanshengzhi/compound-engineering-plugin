@@ -97,7 +97,13 @@ describe("writePiBundle", () => {
     expect(agentsContent).toContain("BEGIN COMPOUND PI TOOL MAP")
     expect(agentsContent).toContain("pi-subagents")
     expect(agentsContent).toContain("@juicesharp/rpiv-ask-user-question")
+    expect(agentsContent).toContain("@juicesharp/rpiv-todo")
+    expect(agentsContent).toContain("pi-web-access")
+    expect(agentsContent).toContain("context-mode")
+    expect(agentsContent).toContain("pi-lens")
     expect(agentsContent).toContain("ask_user_question")
+    expect(agentsContent).toContain("ctx_*")
+    expect(agentsContent).toContain("ast_grep_*")
     expect(agentsContent).not.toContain("pi-ask-user")
   })
 

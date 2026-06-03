@@ -254,7 +254,70 @@ describe("convertClaudeToPi", () => {
     expect(parsedAgent.body).toContain("## Pi tool compatibility")
     expect(parsedAgent.body).toContain("WebSearch -> web_search")
     expect(parsedAgent.body).toContain("AskUserQuestion -> ask_user_question")
+    expect(parsedAgent.body).not.toContain("mcp__context7__")
+    expect(parsedAgent.body).not.toContain("pi-lens")
+    expect(parsedAgent.body).not.toContain("context-mode")
     expect(parsedAgent.body).toContain("Use ask_user_question tool")
+  })
+
+  test("preserves Pi expert accelerator tools and scopes compatibility guidance to exposed tools", () => {
+    const plugin: ClaudePlugin = {
+      root: "/tmp/plugin",
+      manifest: { name: "fixture", version: "1.0.0" },
+      agents: [
+        {
+          name: "pi-expert",
+          description: "Use optional Pi tooling",
+          tools: [
+            "Read",
+            "Bash",
+            "ctx_batch_execute",
+            "ctx_execute",
+            "ctx_execute_file",
+            "ctx_fetch_and_index",
+            "ctx_search",
+            "ctx_index",
+            "lsp_diagnostics",
+            "lsp_navigation",
+            "ast_grep_search",
+            "ast_grep_replace",
+          ],
+          body: "Use context-mode and pi-lens when their tools are available; fall back to native tools on errors.",
+          sourcePath: "/tmp/plugin/agents/pi-expert.md",
+        },
+      ],
+      commands: [],
+      skills: [],
+      hooks: undefined,
+      mcpServers: undefined,
+    }
+
+    const bundle = convertClaudeToPi(plugin, {
+      agentMode: "subagent",
+      inferTemperature: false,
+      permissions: "none",
+    })
+
+    const parsedAgent = parseFrontmatter(bundle.agents[0].content)
+    expect(parsedAgent.data.tools).toBe([
+      "read",
+      "bash",
+      "ctx_batch_execute",
+      "ctx_execute",
+      "ctx_execute_file",
+      "ctx_fetch_and_index",
+      "ctx_search",
+      "ctx_index",
+      "lsp_diagnostics",
+      "lsp_navigation",
+      "ast_grep_search",
+      "ast_grep_replace",
+    ].join(", "))
+    expect(parsedAgent.body).toContain("context-mode tools")
+    expect(parsedAgent.body).toContain("pi-lens tools")
+    expect(parsedAgent.body).toContain("ctx_fetch_and_index")
+    expect(parsedAgent.body).toContain("lsp_diagnostics")
+    expect(parsedAgent.body).toContain("ast_grep_search")
   })
 
 })

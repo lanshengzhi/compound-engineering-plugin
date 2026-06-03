@@ -28,11 +28,16 @@ This block is managed by compound-plugin.
 Pi extensions used by this plugin:
 - Required: \`pi-subagents\` (by nicobailon) provides the \`subagent\` tool used by skills that dispatch parallel agents
 - Recommended: \`@juicesharp/rpiv-ask-user-question\` provides the \`ask_user_question\` tool for structured blocking questions; skills fall back to numbered options in chat when it is missing
-- Optional: \`@juicesharp/rpiv-todo\` provides the \`todo\` tool for task tracking, and \`pi-web-access\` provides \`web_search\` / \`fetch_content\` for research agents
+- Optional: \`@juicesharp/rpiv-todo\` provides the \`todo\` tool for task tracking, and \`pi-web-access\` provides \`web_search\` / \`fetch_content\` / \`code_search\` for research agents
+- Optional expert accelerators: \`context-mode\` provides \`ctx_*\` large-output and recall tools; \`pi-lens\` provides \`lsp_*\` diagnostics/navigation and \`ast_grep_*\` structural search/edit tools
 
 Install with:
   pi install npm:pi-subagents
   pi install npm:@juicesharp/rpiv-ask-user-question
+  pi install npm:@juicesharp/rpiv-todo
+  pi install npm:pi-web-access
+  pi install npm:context-mode
+  pi install npm:pi-lens
 `
 
 export type PiInstallManifest = {

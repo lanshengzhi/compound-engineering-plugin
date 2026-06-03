@@ -172,16 +172,15 @@ Keep rationale at the highest-level location that covers it; restate behavioral 
 
 ### Cross-Platform User Interaction
 
-- [ ] When a skill needs to ask the user a question, instruct use of the platform's blocking question tool and name the known equivalents (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini, `ask_user` in Pi via the `pi-ask-user` extension)
-- [ ] For Claude Code, also instruct to load `AskUserQuestion` via `ToolSearch` with `select:AskUserQuestion` first if its schema isn't already loaded — `AskUserQuestion` is a deferred tool and won't be available at session start. A pending schema load is not a valid reason to fall back to text.
-- [ ] Include a fallback: when no blocking tool exists in the harness or the call errors (e.g., Codex edit modes where `request_user_input` is unavailable, or `ToolSearch` returns no match), present numbered options in chat and wait for the user's reply — never silently skip the question.
+- [ ] When a skill needs to ask the user a question, instruct use of the platform's blocking question tool and name the known equivalents (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini, `ask_user_question` in Pi via the `@juicesharp/rpiv-ask-user-question` extension)
+- [ ] Include a fallback: when no blocking tool exists in the harness or the call errors (e.g., Codex edit modes where `request_user_input` is unavailable, Pi sessions without `ask_user_question`, or runtime modes that do not expose a blocking question tool), present numbered options in chat and wait for the user's reply — never silently skip the question.
 - [ ] **Narrow exception for legitimate option overflow:** when a menu has 5 or more genuinely relevant options — each a distinct destination or workflow, none removable without losing real user choice — render as a numbered list in chat rather than trimming to fit the 4-option cap. This is used with restraint, not as a convenience escape from the blocking tool. Default remains the blocking tool. Before invoking the exception, verify that (a) no option can be cut, (b) no two options can be merged, and (c) no option is better surfaced as contextual prose (e.g., a nudge adjacent to the menu). If any of those reductions work, prefer them over the fallback. When the exception applies, include a hint that free-form input is accepted (e.g., "Pick a number or describe what you want.") so the numbered list retains the blocking tool's open-endedness.
 
-> **Platform-behavior note (April 2026, may change):** The specifics above reflect current behavior — `AskUserQuestion` is deferred in Claude Code, and `request_user_input` in Codex is exposed only in Plan mode. If Anthropic changes `AskUserQuestion` to a non-deferred tool, or Codex exposes `request_user_input` in edit modes, revisit this guidance rather than carrying the workaround forward indefinitely. Verify before assuming these constraints still hold.
+> **Platform-behavior note (June 2026, may change):** The specifics above reflect current behavior — Pi `ask_user_question` and common blocking-question tools cap structured menus at 4 options, and `request_user_input` in Codex is exposed only in Plan mode. If those tools change limits or exposure modes, revisit this guidance rather than carrying workarounds forward indefinitely. Verify before assuming these constraints still hold.
 
 ### Interactive Question Tool Design
 
-Design rules for blocking question menus (`AskUserQuestion` / `request_user_input` / `ask_user`). Violations silently degrade the UX in harnesses where secondary description text is hidden or labels are truncated.
+Design rules for blocking question menus (`AskUserQuestion` / `request_user_input` / `ask_user` / `ask_user_question`). Violations silently degrade the UX in harnesses where secondary description text is hidden or labels are truncated.
 
 - [ ] Each option label must be self-contained — some harnesses render only the label, not the accompanying description; the label alone must convey what the option does
 - [ ] Keep total options to 4 or fewer (`AskUserQuestion` caps at 4 across platforms we target)
@@ -196,7 +195,8 @@ Design rules for blocking question menus (`AskUserQuestion` / `request_user_inpu
 
 ### Cross-Platform Task Tracking
 
-- [ ] When a skill needs to create or track tasks, describe the intent (e.g., "create a task list") and name the known equivalents (`TaskCreate`/`TaskUpdate`/`TaskList` in Claude Code, `update_plan` in Codex)
+- [ ] When a skill needs to create or track tasks, describe the intent (e.g., "create a task list") and name the known equivalents (`TaskCreate`/`TaskUpdate`/`TaskList` in Claude Code, `update_plan` in Codex, `todo` in Pi via `@juicesharp/rpiv-todo`)
+- [ ] Include a fallback for platforms or Pi sessions without a task-tracking tool: keep task state in the transcript or a local TODO artifact.
 - [ ] Do not reference `TodoWrite` or `TodoRead` — these are legacy Claude Code tools replaced by `TaskCreate`/`TaskUpdate`/`TaskList`
 
 ### Cross-Platform Sub-Agent Dispatch
@@ -259,6 +259,7 @@ Why: shell-heavy exploration causes avoidable permission prompts in sub-agent wo
   ````
 
   Use this whenever a `!` pre-resolution would invoke `bash <path>`. Reserve pre-resolution for commands whose first token already matches common user allow rules (`git status`, `gh api`, `cat <path>`, `command -v <name>`).
+- [ ] For Pi-facing guidance, prefer optional expert accelerators when available: `context-mode` (`ctx_batch_execute`, `ctx_execute`, `ctx_execute_file`, `ctx_search`, `ctx_index`) for large output and recall, and `pi-lens` (`lsp_diagnostics`, `lsp_navigation`, `ast_grep_search`, `ast_grep_replace`) for diagnostics, symbol navigation, and structural search/edit. Always include fallbacks to native reads/search/edit; treat empty diagnostics or zero matches as data, and only fall back on tool errors or unavailable tools.
 - [ ] Do not encode shell recipes for routine exploration when native tools can do the job; encode intent and preferred tool classes instead
 - [ ] For shell-only workflows (e.g., `gh`, `git`, `bundle show`, project CLIs), explicit command examples are acceptable when they are simple, task-scoped, and not chained together
 

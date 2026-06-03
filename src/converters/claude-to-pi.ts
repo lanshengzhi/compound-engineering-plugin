@@ -97,7 +97,7 @@ function convertAgent(agent: ClaudeAgent, usedNames: Set<string>): PiGeneratedAg
     tools: tools?.join(", "),
   }
 
-  const sections: string[] = [buildPiToolCompatibilityNote()]
+  const sections: string[] = [buildPiToolCompatibilityNote(tools)]
   if (agent.capabilities && agent.capabilities.length > 0) {
     sections.push(`## Capabilities\n${agent.capabilities.map((capability) => `- ${capability}`).join("\n")}`)
   }
@@ -212,8 +212,9 @@ export function transformContentForPi(body: string): string {
   return result
 }
 
-function buildPiToolCompatibilityNote(): string {
-  return [
+function buildPiToolCompatibilityNote(exposedTools: string[] | undefined): string {
+  const exposed = new Set(exposedTools ?? [])
+  const lines = [
     "## Pi tool compatibility",
     "When these instructions mention Claude Code tool names, use the Pi equivalent:",
     "- Read -> read; Bash -> bash; Edit -> edit; Write -> write",
@@ -222,8 +223,38 @@ function buildPiToolCompatibilityNote(): string {
     "- AskUserQuestion -> ask_user_question when `@juicesharp/rpiv-ask-user-question` is installed",
     "- TodoWrite/TodoRead/Task* -> todo when `@juicesharp/rpiv-todo` is installed; otherwise keep task state in the platform task tracker or a TODO.md file",
     "- Task agent dispatch -> subagent when `pi-subagents` is installed",
-  ].join("\n")
+  ]
+
+  if (CONTEXT_MODE_TOOLS.some((tool) => exposed.has(tool))) {
+    lines.push(
+      "- Large-output compression, indexed web docs, and persistent recall -> context-mode tools (`ctx_batch_execute`, `ctx_execute`, `ctx_execute_file`, `ctx_fetch_and_index`, `ctx_search`, `ctx_index`) when `context-mode` is installed; otherwise use bounded native reads and shell summaries",
+    )
+  }
+
+  if (PI_LENS_TOOLS.some((tool) => exposed.has(tool))) {
+    lines.push(
+      "- Symbol diagnostics/navigation and structural search/edit -> pi-lens tools (`lsp_diagnostics`, `lsp_navigation`, `ast_grep_search`, `ast_grep_replace`) when `pi-lens` is installed; otherwise use targeted source reads and native search/edit",
+    )
+  }
+
+  return lines.join("\n")
 }
+
+const CONTEXT_MODE_TOOLS = [
+  "ctx_batch_execute",
+  "ctx_execute",
+  "ctx_execute_file",
+  "ctx_fetch_and_index",
+  "ctx_search",
+  "ctx_index",
+]
+
+const PI_LENS_TOOLS = [
+  "lsp_diagnostics",
+  "lsp_navigation",
+  "ast_grep_search",
+  "ast_grep_replace",
+]
 
 function mapClaudeToolsForPi(tools: string[] | undefined): string[] | undefined {
   const mapped: string[] = []
@@ -262,6 +293,17 @@ function mapClaudeToolForPi(tool: string): string[] {
     case "fetch_content":
     case "code_search":
     case "get_search_content":
+    case "ask_user_question":
+    case "ctx_batch_execute":
+    case "ctx_execute":
+    case "ctx_execute_file":
+    case "ctx_fetch_and_index":
+    case "ctx_search":
+    case "ctx_index":
+    case "lsp_diagnostics":
+    case "lsp_navigation":
+    case "ast_grep_search":
+    case "ast_grep_replace":
       return [lower]
     case "glob":
       return ["find"]
