@@ -2,7 +2,7 @@
 
 > Diagnose your environment, install missing tools, and bootstrap project-local config — in one interactive flow.
 
-`ce-setup` is the **onboarding** skill. It diagnoses what's installed, what's missing, what the plugin version is, what repo-local config exists, and offers guided installation for the missing pieces. Run it on first install, after upgrading the plugin, when troubleshooting why a skill claims a tool isn't available, or before onboarding a new repo to compound-engineering.
+`ce-setup` is the **onboarding and diagnostics** skill. It diagnoses what's installed, what's missing, what the plugin version is, what repo-local config exists, and offers guided installation for the missing pieces. On Pi, it also reports a capability matrix for required delegation, optional workflow tools, expert accelerators, and converted CE artifact presence. Run it on first install, after upgrading the plugin, when troubleshooting why a skill claims a tool isn't available, or before onboarding a new repo to compound-engineering.
 
 Beta-style explicit-invocation only (`disable-model-invocation: true`) — won't auto-fire.
 
@@ -12,7 +12,7 @@ Beta-style explicit-invocation only (`disable-model-invocation: true`) — won't
 
 | Question | Answer |
 |----------|--------|
-| What does it do? | Runs an environment diagnostic, presents missing tools/skills with install commands, bootstraps `.compound-engineering/config.local.yaml`, optionally adds a `.gitignore` entry |
+| What does it do? | Runs an environment diagnostic, reports the Pi capability matrix when relevant, presents missing tools/skills with install commands, bootstraps `.compound-engineering/config.local.yaml`, optionally adds a `.gitignore` entry |
 | When to use it | First-time install, post-upgrade health check, "why does this skill say X isn't installed?", new repo onboarding |
 | What it produces | Confirmed-installed report, or a guided install flow for missing tools, plus a bootstrapped local config |
 | Status | Explicit-invocation only |
@@ -29,13 +29,14 @@ Compound-engineering relies on multiple external CLIs and per-repo config that's
 - **Per-repo config** — `.compound-engineering/config.local.yaml` for machine-local settings; without bootstrapping, skills like `ce-product-pulse` ask the same questions every run
 - **Stale legacy config** — `compound-engineering.local.md` was the old format; lingering files cause confusion
 - **Gitignore gotchas** — `.compound-engineering/config.local.yaml` should be gitignored (machine-local) but isn't always; the user accidentally commits secrets
+- **Pi readiness is multi-dimensional** — CE can have converted skills installed while required delegation is blocked or optional accelerators such as context compression and code intelligence are degraded
 - **Manual setup is tedious** — installing 7 tools one at a time with the right command for each is friction
 
 ## The Solution
 
 `ce-setup` runs setup as a structured diagnostic-then-fix flow:
 
-- **Phase 1: Diagnose** — runs `bash scripts/check-health` once; reports tool/skill installation status, plugin version, repo-local CE config state in one pass
+- **Phase 1: Diagnose** — runs `bash scripts/check-health` once; reports tool/skill installation status, plugin version, repo-local CE config state, and Pi capability readiness in one pass
 - **Phase 2: Fix** (only when issues exist):
   - Resolve repo-local cleanup (delete obsolete `compound-engineering.local.md` if present)
   - Bootstrap `.compound-engineering/config.local.yaml` (offer to create from template, offer `.gitignore` entry)
@@ -49,9 +50,13 @@ Compound-engineering relies on multiple external CLIs and per-repo config that's
 
 ### 1. Single diagnostic pass
 
-The skill runs **one** check script that handles all CLI tools, agent skills, repo-local CE files, and `.gitignore` guidance. No manual per-tool checks, no repeated questioning. The output is a colored report ready to display to the user. If everything is installed, no repo-local cleanup needed, and the local config exists and is gitignored — the skill prints the success message and stops.
+The skill runs **one** check script that handles all CLI tools, agent skills, repo-local CE files, Pi capability readiness, and `.gitignore` guidance. No manual per-tool checks, no repeated questioning. The output is a colored report ready to display to the user. If everything is installed, no repo-local cleanup needed, and the local config exists and is gitignored — the skill prints the success message and stops.
 
-### 2. Repo-local config bootstrapping
+### 2. Pi capability matrix
+
+For Pi, the diagnostic report includes rows for Subagent delegation, Structured questions, Task tracking, Web research, Large-output compression, Persistent/session recall, Symbol diagnostics/navigation, Structural search/edit, and CE artifact presence. Required delegation can be `blocked`; optional accelerators can be `degraded` without making the whole setup unhealthy. This is a readiness signal, not a new install flow.
+
+### 3. Repo-local config bootstrapping
 
 `.compound-engineering/config.local.yaml` is where machine-local settings live (which tools to use, how workflows behave, pulse settings). The skill:
 
@@ -61,11 +66,11 @@ The skill runs **one** check script that handles all CLI tools, agent skills, re
 
 The split between example (committed) and local (gitignored) is the canonical pattern for machine-local config in a repo. Bootstrapping it means future skills don't have to.
 
-### 3. Multi-select install with all pre-selected
+### 4. Multi-select install with all pre-selected
 
 When tools or skills are missing, the skill presents them as a multi-select with **all items pre-selected**. The user can deselect anything they don't want. Items are grouped under `Tools:` and `Skills:` so it's clear which runtime each targets. Already-installed items are omitted entirely.
 
-### 4. Verify each install before continuing
+### 5. Verify each install before continuing
 
 After running each install command, the skill verifies the tool actually installed:
 
@@ -74,15 +79,15 @@ After running each install command, the skill verifies the tool actually install
 
 If verification succeeds, success is reported. If it fails, the project URL is displayed as fallback and the skill continues to the next dependency rather than blocking.
 
-### 5. Legacy `compound-engineering.local.md` cleanup
+### 6. Legacy `compound-engineering.local.md` cleanup
 
 The skill detects if the obsolete `compound-engineering.local.md` exists at the repo root. If so, it explains the file is obsolete (review-agent selection is now automatic, machine-local state moved to `.compound-engineering/config.local.yaml`) and asks whether to delete. The user controls the cleanup; the skill doesn't silently delete repo files.
 
-### 6. Pre-resolved plugin root for Claude Code detection
+### 7. Pre-resolved plugin root for Claude Code detection
 
 The skill uses pre-resolution (`!` backtick at skill load) to capture `${CLAUDE_PLUGIN_ROOT}`. If it resolves to an absolute path, this is Claude Code and the skill recommends `/ce-update` for upgrades. If it doesn't resolve (empty, literal token, or non-Claude harness), `/ce-update` references are omitted. No guessing at platform.
 
-### 7. Explicit-invocation only
+### 8. Explicit-invocation only
 
 `disable-model-invocation: true` prevents the skill from auto-firing on prose mentions of "setup" or installation discussion. Setup is a deliberate user choice — invoke `/ce-setup` directly.
 
@@ -104,11 +109,17 @@ Tools:
 Skills:
   🟡 ast-grep (not installed)
 
+Pi capabilities:
+  🔴 Subagent delegation: blocked
+  🟡 Structured questions: degraded
+  🟡 Large-output compression: degraded
+  🟢 CE artifact presence: installed
+
 Config:
   ❌ .compound-engineering/config.local.yaml not found
 ```
 
-The skill detects 3 missing tools, 1 missing skill, no local config. It walks through:
+The skill detects 3 missing tools, 1 missing skill, blocked Pi delegation, degraded optional Pi accelerators, and no local config. It walks through:
 
 1. Bootstrap config: "Set up a local config file for this project? (y/n)" — you say yes. Copies template to `.compound-engineering/config.local.yaml`. Offers to add `.compound-engineering/*.local.yaml` to `.gitignore` — adds it.
 2. Install missing tools: "Select which to install (all pre-selected): [x] gh, [x] vhs, [x] ast-grep, [x] ast-grep skill" — you keep all selected.
@@ -163,7 +174,7 @@ Direct invocation:
 
 - `/ce-setup`
 
-The skill diagnoses, presents missing pieces with install commands, bootstraps config. No arguments, no flags — the diagnostic pass drives everything.
+The skill diagnoses, reports the Pi capability matrix when a Pi root is present, presents missing pieces with install commands, and bootstraps config. No arguments are required — the diagnostic pass drives everything. Advanced Pi users can pass a root through the underlying script with `--pi-home` when validating a non-default Pi root.
 
 ---
 

@@ -42,7 +42,7 @@ This document records the intended install model by harness. The current priorit
 | Factory Droid | Native plugin marketplace pointed at the CE GitHub repository | No, CE plugin install/convert target removed | Yes, before or during migration from previous `~/.factory` custom installs | Droid docs say Claude Code plugins install directly and are translated automatically; `ce-doc-review` was manually tested in Droid. |
 | Qwen Code | Native extension install from the CE GitHub repository and existing Claude plugin metadata | No, CE plugin install/convert target removed | Yes, before or during migration from previous `~/.qwen` custom installs | Qwen docs say Claude Code extensions install directly from GitHub and are converted automatically; native install was manually tested on 2026-04-19. |
 | OpenCode | Custom CE install to `~/.config/opencode/{skills,agents,plugins}` plus merged `opencode.json`; source commands are written only if present | Yes | Yes, every install | OpenCode plugins are JS/TS or npm hooks/tools, not a Claude-compatible marketplace install path for CE's full plugin payload. |
-| Pi | Custom CE install to `~/.pi/agent/{skills,prompts,extensions}` plus MCPorter config; source commands are written only if present | Yes, until CE ships and tests a Pi package | Yes, every install | Pi has package install support, but CE has not yet packaged the compat extension, generated skills, prompts, and MCPorter config into a tested Pi package. |
+| Pi | Custom CE install to `~/.pi/agent/{skills,agents,prompts}` plus managed metadata and MCPorter config when source MCP servers exist; source commands are written only if present | Yes, until CE ships and tests a Pi package | Yes, every install | Pi has package install support, but current CE output relies on community extensions (`pi-subagents`, `ask_user_question`, optional `todo`/web/context/lens tools) rather than a bundled compat extension. |
 | Codex | Hybrid: native Codex plugin install for skills, plus CE Bun install for custom agents under the active Codex root | Yes, for agents only, because native Codex plugins do not currently register bundled custom agents | Yes, every Bun agent install | Use the same `CODEX_HOME` or `--codex-home` for every Codex step when installing into a non-default profile. |
 | Gemini CLI | Custom CE install to `~/.gemini/{skills,agents}` for now; source commands are written only if present; native extension packaging exists but does not fit CE's current repo/package layout | Yes, until CE ships a Gemini extension root, release artifact, or dedicated distribution branch/repo | Yes, every install | Avoid `~/.agents/skills`; write normalized Gemini agents to `~/.gemini/agents`. |
 | Kiro CLI | Custom CE install to project `.kiro/{skills,agents,steering,settings}` | Yes | Yes, every install; manual `cleanup --target kiro` also exists | Kiro has its own JSON agent format and project-local install root. |
@@ -75,9 +75,10 @@ OpenCode: ~/.config/opencode/skills/<skill>/SKILL.md
           ~/.config/opencode/opencode.json
 
 Pi:       ~/.pi/agent/skills/<skill>/SKILL.md
+          ~/.pi/agent/agents/<agent>.md
           ~/.pi/agent/prompts/*.md  # source commands only, if present
-          ~/.pi/agent/extensions/*.ts
-          ~/.pi/agent/compound-engineering/mcporter.json
+          ~/.pi/agent/compound-engineering/install-manifest.json
+          ~/.pi/agent/compound-engineering/mcporter.json  # only when source MCP servers exist
 
 Codex:  ~/.codex/skills/compound-engineering/<skill>/SKILL.md
         ~/.codex/agents/compound-engineering/<agent>.toml

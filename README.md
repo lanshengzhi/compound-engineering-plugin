@@ -217,12 +217,18 @@ bunx @every-env/compound-plugin install compound-engineering --to gemini
 bunx @every-env/compound-plugin install compound-engineering --to kiro
 ```
 
-**Pi prerequisites.** Pi does not ship a native subagent primitive, so the Pi install depends on [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) (required) and recommends [`@juicesharp/rpiv-ask-user-question`](https://www.npmjs.com/package/@juicesharp/rpiv-ask-user-question) for richer blocking user questions:
+**Pi prerequisites.** The Pi converter writes CE skills, agents, prompts, and managed metadata into Pi-owned roots; it does not ship a bundled CE compat extension. Runtime tools come from community Pi extensions. [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) is required for delegated workflows; structured questions, task tracking, web research, context compression, and code intelligence are optional/recommended accelerators with documented fallbacks:
 
 ```bash
 pi install npm:pi-subagents                         # required — provides the `subagent` tool used by skills that dispatch parallel agents
-pi install npm:@juicesharp/rpiv-ask-user-question   # recommended — provides the `ask_user_question` tool; skills fall back to numbered options in chat when it is missing
+pi install npm:@juicesharp/rpiv-ask-user-question   # recommended — provides `ask_user_question`; skills fall back to numbered options in chat when it is missing
+pi install npm:@juicesharp/rpiv-todo                # optional — provides `todo` task tracking
+pi install npm:pi-web-access                        # optional — provides `web_search` / `fetch_content` / `code_search`
+pi install npm:context-mode                         # optional accelerator — provides `ctx_*` large-output and recall tools
+pi install npm:pi-lens                              # optional accelerator — provides `lsp_*` and `ast_grep_*` code-intelligence tools
 ```
+
+Run `/ce-setup` after installing to view the Pi capability matrix. The matrix is diagnostic: it distinguishes blocked required delegation from degraded optional accelerators without introducing a new install flow.
 
 To auto-detect custom-install targets and install to all:
 

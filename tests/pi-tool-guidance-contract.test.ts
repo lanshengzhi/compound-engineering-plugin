@@ -104,6 +104,27 @@ describe("Pi tool guidance contract", () => {
     expect(beta).toBe(stable)
   })
 
+  test("Pi documentation matches current converter-backed install posture", async () => {
+    const rootReadme = await fs.readFile(path.join(repoRoot, "README.md"), "utf8")
+    const pluginReadme = await fs.readFile(path.join(repoRoot, "plugins", "compound-engineering", "README.md"), "utf8")
+    const setupDoc = await fs.readFile(path.join(repoRoot, "docs", "skills", "ce-setup.md"), "utf8")
+    const nativeStrategy = await fs.readFile(
+      path.join(repoRoot, "docs", "solutions", "integrations", "native-plugin-install-strategy.md"),
+      "utf8",
+    )
+
+    for (const content of [rootReadme, pluginReadme, setupDoc]) {
+      expect(content).toContain("Pi capability")
+    }
+    expect(setupDoc).toContain("readiness signal, not a new install flow")
+    expect(rootReadme).toContain("does not ship a bundled CE compat extension")
+    expect(rootReadme).toContain("context-mode")
+    expect(rootReadme).toContain("pi-lens")
+    expect(nativeStrategy).toContain("~/.pi/agent/agents/<agent>.md")
+    expect(nativeStrategy).toContain("rather than a bundled compat extension")
+    expect(nativeStrategy).not.toContain("packaged the compat extension")
+  })
+
   test("skill markdown does not reference files outside its own directory tree", async () => {
     const skillNames = Object.keys(coreSkillCapabilities)
     for (const skillName of skillNames) {

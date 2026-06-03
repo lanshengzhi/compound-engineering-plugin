@@ -4,7 +4,7 @@ AI-powered development tools that get smarter with every use. Make each unit of 
 
 ## Getting Started
 
-After installing, run `/ce-setup` in any project. It diagnoses your environment, installs missing tools, and bootstraps project config in one interactive flow.
+After installing, run `/ce-setup` in any project. It diagnoses your environment, reports Pi capability readiness when running under Pi, installs missing tools, and bootstraps project config in one interactive flow.
 
 ## Components
 
@@ -61,7 +61,7 @@ The primary entry points for engineering work, invoked as slash commands. Detail
 | [`/ce-resolve-pr-feedback`](../../docs/skills/ce-resolve-pr-feedback.md) | Resolve PR review feedback in parallel |
 | [`/ce-test-browser`](../../docs/skills/ce-test-browser.md) | Run browser tests on PR-affected pages |
 | [`/ce-test-xcode`](../../docs/skills/ce-test-xcode.md) | Build and test iOS apps on simulator using XcodeBuildMCP |
-| [`/ce-setup`](../../docs/skills/ce-setup.md) | Diagnose environment, install missing tools, and bootstrap project config |
+| [`/ce-setup`](../../docs/skills/ce-setup.md) | Diagnose environment, report Pi capability readiness, install missing tools, and bootstrap project config |
 | [`/ce-update`](../../docs/skills/ce-update.md) | Check compound-engineering plugin version and fix stale cache (Claude Code only) |
 | [`/ce-release-notes`](../../docs/skills/ce-release-notes.md) | Summarize recent compound-engineering plugin releases, or answer a question about a past release with a version citation |
 
