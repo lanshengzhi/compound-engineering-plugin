@@ -1,0 +1,160 @@
+{
+  "skill_name": "ce-dogfood-beta",
+  "suite_name": "pi-workflows",
+  "purpose": "Runtime smoke matrix for expert Pi workflow behavior across required, recommended, optional accelerator, and stale-session states.",
+  "non_purpose": "Does not require CI to mutate a user's real Pi home or launch interactive Pi for every run. CI validates this suite's contract only.",
+  "safety_policy": {
+    "default_pi_root": "temporary",
+    "real_home_mutation": "forbidden_by_default",
+    "valid_real_home_run_requires": ["explicit_operator_opt_in", "backup_path", "restore_plan"],
+    "scratch_root": "/tmp/compound-engineering/ce-dogfood-beta/pi-workflows/<run-id>/"
+  },
+  "capability_rows": [
+    "Subagent delegation",
+    "Structured questions",
+    "Task tracking",
+    "Web research",
+    "Large-output compression",
+    "Persistent/session recall",
+    "Symbol diagnostics/navigation",
+    "Structural search/edit",
+    "CE artifact presence"
+  ],
+  "run_record_required_fields": [
+    "pi_root",
+    "pi_root_kind",
+    "extension_set",
+    "session_freshness",
+    "ce_setup_matrix",
+    "capability_evidence",
+    "transcript_excerpt_paths"
+  ],
+  "evals": [
+    {
+      "id": "missing-extensions",
+      "name": "No Pi extensions installed",
+      "state": "missing",
+      "pi_root_kind": "temp",
+      "extension_set": [],
+      "session_freshness": "fresh_after_install",
+      "prompt": "Run ce-setup, then start a tiny ce-plan/ce-work-style flow that would normally use delegation and task tracking. Record fallbacks instead of installing tools.",
+      "expected_matrix": {
+        "Subagent delegation": "blocked",
+        "Structured questions": "degraded",
+        "Task tracking": "degraded",
+        "Web research": "degraded",
+        "Large-output compression": "degraded",
+        "Persistent/session recall": "degraded",
+        "Symbol diagnostics/navigation": "degraded",
+        "Structural search/edit": "degraded",
+        "CE artifact presence": "installed"
+      },
+      "expected_evidence": ["delegation_block_reported", "numbered_or_chat_fallback_available", "no_optional_capability_blocks_workflow"]
+    },
+    {
+      "id": "subagents-only",
+      "name": "Required delegation only",
+      "state": "partial",
+      "pi_root_kind": "temp",
+      "extension_set": ["pi-subagents"],
+      "session_freshness": "fresh_after_install",
+      "prompt": "Run a small persona fan-out or delegated scout task, then ask a decision question and record the fallback path.",
+      "expected_matrix": {
+        "Subagent delegation": "active-or-unverified",
+        "Structured questions": "degraded",
+        "Task tracking": "degraded",
+        "Web research": "degraded",
+        "Large-output compression": "degraded",
+        "Persistent/session recall": "degraded",
+        "Symbol diagnostics/navigation": "degraded",
+        "Structural search/edit": "degraded",
+        "CE artifact presence": "installed"
+      },
+      "expected_evidence": ["subagent_invoked", "structured_question_fallback_used", "optional_accelerators_not_required"]
+    },
+    {
+      "id": "subagents-plus-questions",
+      "name": "Delegation plus structured questions",
+      "state": "partial",
+      "pi_root_kind": "temp",
+      "extension_set": ["pi-subagents", "@juicesharp/rpiv-ask-user-question"],
+      "session_freshness": "fresh_after_install",
+      "prompt": "Run a four-option question with ask_user_question, then a five-option menu that must use numbered-list fallback.",
+      "expected_matrix": {
+        "Subagent delegation": "active-or-unverified",
+        "Structured questions": "active-or-unverified",
+        "Task tracking": "degraded",
+        "Web research": "degraded",
+        "Large-output compression": "degraded",
+        "Persistent/session recall": "degraded",
+        "Symbol diagnostics/navigation": "degraded",
+        "Structural search/edit": "degraded",
+        "CE artifact presence": "installed"
+      },
+      "expected_evidence": ["ask_user_question_invoked", "five_option_numbered_fallback", "subagent_available"]
+    },
+    {
+      "id": "recommended-no-accelerators",
+      "name": "Recommended extensions without accelerators",
+      "state": "accelerator_absent",
+      "pi_root_kind": "temp",
+      "extension_set": ["pi-subagents", "@juicesharp/rpiv-ask-user-question", "@juicesharp/rpiv-todo", "pi-web-access"],
+      "session_freshness": "fresh_after_install",
+      "prompt": "Run ce-work on a small repo task that needs task tracking and optional web context, then record native fallbacks for context-mode and pi-lens.",
+      "expected_matrix": {
+        "Subagent delegation": "active-or-unverified",
+        "Structured questions": "active-or-unverified",
+        "Task tracking": "active-or-unverified",
+        "Web research": "active-or-unverified",
+        "Large-output compression": "degraded",
+        "Persistent/session recall": "degraded",
+        "Symbol diagnostics/navigation": "degraded",
+        "Structural search/edit": "degraded",
+        "CE artifact presence": "installed"
+      },
+      "expected_evidence": ["todo_invoked", "web_tool_invoked_or_missing_context_stated", "native_code_search_fallback_used"]
+    },
+    {
+      "id": "full-accelerators",
+      "name": "Full recommended extensions plus accelerators",
+      "state": "accelerator_present",
+      "pi_root_kind": "temp",
+      "extension_set": ["pi-subagents", "@juicesharp/rpiv-ask-user-question", "@juicesharp/rpiv-todo", "pi-web-access", "context-mode", "pi-lens"],
+      "session_freshness": "fresh_after_install",
+      "prompt": "Run a work/debug/review smoke task with a large output summary, LSP diagnostics/navigation, and AST search before native fallback.",
+      "expected_matrix": {
+        "Subagent delegation": "active-or-unverified",
+        "Structured questions": "active-or-unverified",
+        "Task tracking": "active-or-unverified",
+        "Web research": "active-or-unverified",
+        "Large-output compression": "active-or-unverified",
+        "Persistent/session recall": "active-or-unverified",
+        "Symbol diagnostics/navigation": "active-or-unverified",
+        "Structural search/edit": "active-or-unverified",
+        "CE artifact presence": "installed"
+      },
+      "expected_evidence": ["ctx_tool_invoked", "lsp_tool_invoked_or_empty_diagnostics_recorded", "ast_grep_invoked_or_zero_matches_recorded"]
+    },
+    {
+      "id": "stale-session-after-install",
+      "name": "Extensions installed after session start",
+      "state": "stale_session",
+      "pi_root_kind": "temp",
+      "extension_set": ["pi-subagents", "@juicesharp/rpiv-ask-user-question", "@juicesharp/rpiv-todo", "pi-web-access", "context-mode", "pi-lens"],
+      "session_freshness": "stale_after_install",
+      "prompt": "Start Pi before installing extensions, install them on disk, then run ce-setup and attempt capability use without restarting the session.",
+      "expected_matrix": {
+        "Subagent delegation": "active-or-unverified",
+        "Structured questions": "active-or-unverified",
+        "Task tracking": "active-or-unverified",
+        "Web research": "active-or-unverified",
+        "Large-output compression": "active-or-unverified",
+        "Persistent/session recall": "active-or-unverified",
+        "Symbol diagnostics/navigation": "active-or-unverified",
+        "Structural search/edit": "active-or-unverified",
+        "CE artifact presence": "installed"
+      },
+      "expected_evidence": ["disk_install_detected", "active_session_tool_absence_recorded", "restart_required_or_stale_session_explained"]
+    }
+  ]
+}
