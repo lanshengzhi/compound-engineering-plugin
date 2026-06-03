@@ -62,11 +62,13 @@ async function loadAgents(agentsDirs: string[]): Promise<ClaudeAgent[]> {
     const raw = await readText(file)
     const { data, body } = parseFrontmatter(raw, file)
     const name = (data.name as string) ?? deriveMarkdownStem(file)
+    const tools = parseAllowedTools(data.tools)
     agents.push({
       name,
       description: data.description as string | undefined,
       capabilities: data.capabilities as string[] | undefined,
       model: data.model as string | undefined,
+      tools,
       body: body.trim(),
       sourcePath: file,
     })

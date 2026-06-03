@@ -37,7 +37,7 @@ describe("convertClaudeToPi", () => {
     // commands-as-skills on other targets; Pi keeps it empty.
     expect(bundle.generatedSkills).toEqual([])
 
-    // Pi installs now depend on the community pi-subagents and pi-ask-user extensions,
+    // Pi installs now depend on community pi-subagents and ask_user_question extensions,
     // so the converter emits no bundled extension. Legacy cleanup in the Pi writer
     // removes any prior compound-engineering-compat.ts on upgrade.
     expect(bundle.extensions).toEqual([])
@@ -82,7 +82,7 @@ describe("convertClaudeToPi", () => {
     expect(bundle.mcporterConfig).toBeUndefined()
   })
 
-  test("transforms Task calls, slash commands, and todo tool references; preserves AskUserQuestion", () => {
+  test("transforms Task calls, slash commands, todo references, and Pi ask-user tool names", () => {
     const plugin: ClaudePlugin = {
       root: "/tmp/plugin",
       manifest: { name: "fixture", version: "1.0.0" },
@@ -118,10 +118,8 @@ describe("convertClaudeToPi", () => {
 
     expect(parsedPrompt.body).toContain("Run subagent with agent=\"repo-research-analyst\" and task=\"feature_description\".")
     expect(parsedPrompt.body).toContain("Run subagent with agent=\"learnings-researcher\" and task=\"feature_description\".")
-    // AskUserQuestion is preserved; skill source-side enumerations name each platform's
-    // blocking-question tool (including `ask_user` for Pi via pi-ask-user), so the
-    // converter no longer rewrites the token.
-    expect(parsedPrompt.body).toContain("AskUserQuestion")
+    expect(parsedPrompt.body).toContain("ask_user_question tool")
+    expect(parsedPrompt.body).not.toContain("AskUserQuestion tool")
     expect(parsedPrompt.body).toContain("/workflows-work")
     expect(parsedPrompt.body).toContain("/todo-resolve")
     expect(parsedPrompt.body).toContain("the platform's task-tracking primitive")
@@ -224,6 +222,39 @@ describe("convertClaudeToPi", () => {
     expect(parsedPrompt.body).toContain('Run subagent with agent="code-simplicity-reviewer".')
     expect(parsedPrompt.body).not.toContain("compound-engineering:")
     expect(parsedPrompt.body).not.toContain("()")
+  })
+
+  test("maps Claude agent tool names to Pi tools and injects compatibility guidance", () => {
+    const plugin: ClaudePlugin = {
+      root: "/tmp/plugin",
+      manifest: { name: "fixture", version: "1.0.0" },
+      agents: [
+        {
+          name: "researcher",
+          description: "Research things",
+          tools: ["Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch", "AskUserQuestion", "TodoWrite", "Task", "mcp__context7__*"],
+          body: "Use AskUserQuestion tool, then Task repo-research-analyst(topic).",
+          sourcePath: "/tmp/plugin/agents/researcher.md",
+        },
+      ],
+      commands: [],
+      skills: [],
+      hooks: undefined,
+      mcpServers: undefined,
+    }
+
+    const bundle = convertClaudeToPi(plugin, {
+      agentMode: "subagent",
+      inferTemperature: false,
+      permissions: "none",
+    })
+
+    const parsedAgent = parseFrontmatter(bundle.agents[0].content)
+    expect(parsedAgent.data.tools).toBe("read, grep, find, bash, fetch_content, web_search, ask_user_question, todo, subagent")
+    expect(parsedAgent.body).toContain("## Pi tool compatibility")
+    expect(parsedAgent.body).toContain("WebSearch -> web_search")
+    expect(parsedAgent.body).toContain("AskUserQuestion -> ask_user_question")
+    expect(parsedAgent.body).toContain("Use ask_user_question tool")
   })
 
 })

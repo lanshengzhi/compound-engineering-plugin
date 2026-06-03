@@ -89,13 +89,15 @@ function convertAgent(agent: ClaudeAgent, usedNames: Set<string>): PiGeneratedAg
   const description = sanitizeDescription(
     agent.description ?? `Converted from Claude agent ${agent.name}`,
   )
+  const tools = mapClaudeToolsForPi(agent.tools)
 
   const frontmatter: Record<string, unknown> = {
     name,
     description,
+    tools: tools?.join(", "),
   }
 
-  const sections: string[] = []
+  const sections: string[] = [buildPiToolCompatibilityNote()]
   if (agent.capabilities && agent.capabilities.length > 0) {
     sections.push(`## Capabilities\n${agent.capabilities.map((capability) => `- ${capability}`).join("\n")}`)
   }
@@ -103,7 +105,7 @@ function convertAgent(agent: ClaudeAgent, usedNames: Set<string>): PiGeneratedAg
   const body = [
     ...sections,
     agent.body.trim().length > 0
-      ? agent.body.trim()
+      ? transformContentForPi(agent.body.trim())
       : `Instructions converted from the ${agent.name} agent.`,
   ].join("\n\n")
 
@@ -116,6 +118,56 @@ function convertAgent(agent: ClaudeAgent, usedNames: Set<string>): PiGeneratedAg
 export function transformContentForPi(body: string): string {
   let result = body
 
+  // Pi's maintained structured-question extension exposes ask_user_question.
+  // Older CE Pi output mentioned the legacy ask_user tool and pi-ask-user package;
+  // normalize copied skill/reference prose to the installed tool name while keeping
+  // the plain-chat fallback when the tool is unavailable.
+  result = result.replace(
+    /On platforms whose blocking question tool has no option cap \(Codex `request_user_input`, Pi `ask_user`\), use the platform's blocking tool;/g,
+    "On platforms whose blocking question tool has no option cap (Codex `request_user_input`), use the platform's blocking tool. In Pi, `ask_user_question` has a 4-option cap, so use the numbered-list fallback for 5-option menus;",
+  )
+  result = result.replace(
+    /On platforms where blocking question tools have no option cap \(e\.g\., Codex `request_user_input`, Pi `ask_user`\), use the platform's blocking tool with all 5 options\./g,
+    "On platforms where blocking question tools have no option cap (e.g., Codex `request_user_input`), use the platform's blocking tool with all 5 options. In Pi, `ask_user_question` has a 4-option cap, so use the numbered-list fallback for 5-option menus.",
+  )
+  result = result.replace(
+    /`AskUserQuestion` in Claude Code with `ToolSearch select:AskUserQuestion` pre-loaded if needed/g,
+    "`AskUserQuestion` in Claude Code",
+  )
+  result = result.replace(
+    /`AskUserQuestion` in Claude Code \(call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded\)/g,
+    "`AskUserQuestion` in Claude Code",
+  )
+  result = result.replace(
+    /`AskUserQuestion` in Claude Code — call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded/g,
+    "`AskUserQuestion` in Claude Code",
+  )
+  result = result.replace(
+    /In Claude Code[\s\S]*?call `ToolSearch` with (?:query )?`?select:AskUserQuestion`?[^.]*\.\s*/g,
+    "",
+  )
+  result = result.replace(
+    / — `ToolSearch` returns no match, the tool call explicitly fails, or the runtime mode does not expose it/g,
+    ", the tool call explicitly fails, or the runtime mode does not expose it",
+  )
+  result = result.replace(
+    /\s*\*\*Claude Code only:\*\*[^.]*call `ToolSearch` with query `select:AskUserQuestion`[^.]*\./g,
+    "",
+  )
+  result = result.replace(/\s*A pending schema load is not a fallback trigger\./g, "")
+  result = result.replace(/ — not because a schema load is required/g, "")
+  result = result.replace(
+    /`ask_user` in Pi \(requires the `pi-ask-user` extension\)/g,
+    "`ask_user_question` in Pi (provided by `@juicesharp/rpiv-ask-user-question`)",
+  )
+  result = result.replace(/Pi `ask_user`/g, "Pi `ask_user_question`")
+  result = result.replace(/`ask_user` in Pi/g, "`ask_user_question` in Pi")
+  result = result.replace(/`pi-ask-user`/g, "`@juicesharp/rpiv-ask-user-question`")
+  result = result.replace(/\bpi-ask-user\b/g, "@juicesharp/rpiv-ask-user-question")
+  result = result.replace(/`AskUserQuestion` tool/g, "`ask_user_question` tool")
+  result = result.replace(/\bAskUserQuestion tool\b/g, "ask_user_question tool")
+  result = result.replace(/\bAskUserQuestion$/gm, "ask_user_question")
+
   // Task repo-research-analyst(feature_description) or Task compound-engineering:research:repo-research-analyst(args)
   // -> Run subagent with agent="repo-research-analyst" and task="feature_description"
   const taskPattern = /^(\s*-?\s*)Task\s+([a-z][a-z0-9:-]*)\(([^)]*)\)/gm
@@ -124,8 +176,8 @@ export function transformContentForPi(body: string): string {
     const skillName = normalizeName(finalSegment)
     const trimmedArgs = args.trim().replace(/\s+/g, " ")
     return trimmedArgs
-      ? `${prefix}Run subagent with agent=\"${skillName}\" and task=\"${trimmedArgs}\".`
-      : `${prefix}Run subagent with agent=\"${skillName}\".`
+      ? `${prefix}Run subagent with agent="${skillName}" and task="${trimmedArgs}".`
+      : `${prefix}Run subagent with agent="${skillName}".`
   })
 
   // Claude Code task-tracking primitives: current Task* API (TaskCreate/TaskUpdate/TaskList/TaskGet/TaskStop/TaskOutput)
@@ -158,6 +210,81 @@ export function transformContentForPi(body: string): string {
   })
 
   return result
+}
+
+function buildPiToolCompatibilityNote(): string {
+  return [
+    "## Pi tool compatibility",
+    "When these instructions mention Claude Code tool names, use the Pi equivalent:",
+    "- Read -> read; Bash -> bash; Edit -> edit; Write -> write",
+    "- Grep -> grep; Glob -> find; LS -> ls",
+    "- WebSearch -> web_search and WebFetch -> fetch_content when `pi-web-access` is installed",
+    "- AskUserQuestion -> ask_user_question when `@juicesharp/rpiv-ask-user-question` is installed",
+    "- TodoWrite/TodoRead/Task* -> todo when `@juicesharp/rpiv-todo` is installed; otherwise keep task state in the platform task tracker or a TODO.md file",
+    "- Task agent dispatch -> subagent when `pi-subagents` is installed",
+  ].join("\n")
+}
+
+function mapClaudeToolsForPi(tools: string[] | undefined): string[] | undefined {
+  const mapped: string[] = []
+  const seen = new Set<string>()
+
+  for (const tool of tools ?? []) {
+    for (const piTool of mapClaudeToolForPi(tool)) {
+      if (seen.has(piTool)) continue
+      seen.add(piTool)
+      mapped.push(piTool)
+    }
+  }
+
+  return mapped.length > 0 ? mapped : undefined
+}
+
+function mapClaudeToolForPi(tool: string): string[] {
+  const raw = tool.trim()
+  if (!raw) return []
+  if (raw.startsWith("mcp__") || raw.startsWith("mcp:")) return []
+
+  const base = raw.replace(/\(.*/, "").trim()
+  const lower = base.toLowerCase()
+
+  switch (lower) {
+    case "read":
+    case "bash":
+    case "edit":
+    case "write":
+    case "grep":
+    case "find":
+    case "ls":
+    case "subagent":
+    case "todo":
+    case "web_search":
+    case "fetch_content":
+    case "code_search":
+    case "get_search_content":
+      return [lower]
+    case "glob":
+      return ["find"]
+    case "websearch":
+      return ["web_search"]
+    case "webfetch":
+      return ["fetch_content"]
+    case "askuserquestion":
+      return ["ask_user_question"]
+    case "todoread":
+    case "todowrite":
+    case "taskcreate":
+    case "taskupdate":
+    case "tasklist":
+    case "taskget":
+    case "taskstop":
+    case "taskoutput":
+      return ["todo"]
+    case "task":
+      return ["subagent"]
+    default:
+      return []
+  }
 }
 
 function normalizeName(value: string): string {

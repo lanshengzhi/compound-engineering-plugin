@@ -27,11 +27,12 @@ This block is managed by compound-plugin.
 
 Pi extensions used by this plugin:
 - Required: \`pi-subagents\` (by nicobailon) provides the \`subagent\` tool used by skills that dispatch parallel agents
-- Recommended: \`pi-ask-user\` (by edlsh) provides the \`ask_user\` tool; skills fall back to numbered options in chat when it is missing
+- Recommended: \`@juicesharp/rpiv-ask-user-question\` provides the \`ask_user_question\` tool for structured blocking questions; skills fall back to numbered options in chat when it is missing
+- Optional: \`@juicesharp/rpiv-todo\` provides the \`todo\` tool for task tracking, and \`pi-web-access\` provides \`web_search\` / \`fetch_content\` for research agents
 
 Install with:
   pi install npm:pi-subagents
-  pi install npm:pi-ask-user
+  pi install npm:@juicesharp/rpiv-ask-user-question
 `
 
 export type PiInstallManifest = {
@@ -87,7 +88,7 @@ export async function writePiBundle(outputRoot: string, bundle: PiBundle): Promi
     const skillName = sanitizePathName(skill.name)
     const targetDir = path.join(paths.skillsDir, skillName)
     await cleanupCurrentManagedSkillDir(targetDir, manifest, skillName)
-    await copySkillDir(skill.sourceDir, targetDir, transformContentForPi)
+    await copySkillDir(skill.sourceDir, targetDir, transformContentForPi, true)
   }
 
   for (const skill of bundle.generatedSkills) {

@@ -1762,7 +1762,7 @@ describe("CLI", () => {
     // nicobailon/pi-subagents can resolve them via the `subagent` tool.
     expect(await exists(path.join(piRoot, "agents", "repo-research-analyst.md"))).toBe(true)
     // Pi installs no longer ship a plugin-authored compat extension; users install
-    // community pi-subagents + pi-ask-user extensions directly in Pi. MCP servers
+    // community pi-subagents + ask_user_question extensions directly in Pi. MCP servers
     // declared in plugin.json are still translated to mcporter.json so plugins
     // with MCP wiring keep their backends after conversion.
     expect(await exists(path.join(piRoot, "extensions", "compound-engineering-compat.ts"))).toBe(false)
