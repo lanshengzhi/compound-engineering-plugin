@@ -232,7 +232,21 @@ export function transformContentForPi(body: string): string {
     return `/${normalizeName(withoutPrefix)}`
   })
 
+  result = expandPiCapabilityGuidance(result)
+
   return result
+}
+
+function expandPiCapabilityGuidance(body: string): string {
+  return body
+    .replace(/large-output compression/g, "large-output compression (Pi: `context-mode` with `ctx_batch_execute`, `ctx_execute`, and `ctx_execute_file`)")
+    .replace(/persistent\/session recall/g, "persistent/session recall (Pi: `ctx_search` and `ctx_index` from `context-mode`)")
+    .replace(/symbol diagnostics\/navigation/g, "symbol diagnostics/navigation (Pi: `lsp_diagnostics` and `lsp_navigation` from `pi-lens`)")
+    .replace(/structural search\/edit/g, "structural search/edit (Pi: `ast_grep_search` and `ast_grep_replace` from `pi-lens`)")
+    .replace(/task tracking/g, "task tracking (Pi: `todo` from `@juicesharp/rpiv-todo`)")
+    .replace(/subagent delegation/g, "subagent delegation (Pi: `subagent` from `pi-subagents`)")
+    .replace(/web research/g, "web research (Pi: `web_search`, `fetch_content`, `code_search`, and `get_search_content` from `pi-web-access`)")
+    .replace(/blocking question tools/g, "blocking question tools (Pi: `ask_user_question` from `@juicesharp/rpiv-ask-user-question`)")
 }
 
 function buildPiToolCompatibilityNote(exposedTools: string[] | undefined): string {

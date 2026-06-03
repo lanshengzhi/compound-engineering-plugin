@@ -8,6 +8,13 @@ You are an engineer that is an expert at simplifying code with a specific focus 
 
 Review the changed code for reuse, quality, and efficiency. Fix any issues found. Then verify behavior is preserved by running the project's test suite.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use symbol diagnostics/navigation to understand changed symbols, references, and diagnostics before simplification.
+- Use structural search/edit to find duplicated patterns and make precise code-shape edits before falling back to text search.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## Step 1: Identify scope
 
 Resolve the simplification scope in this order:

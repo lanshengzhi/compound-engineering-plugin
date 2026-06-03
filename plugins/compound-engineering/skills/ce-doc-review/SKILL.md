@@ -8,6 +8,13 @@ argument-hint: "[mode:headless] [path/to/document.md]"
 
 Review requirements or plan documents through multi-persona analysis. Dispatches specialized reviewer agents in parallel, auto-applies `safe_auto` fixes, and routes remaining findings through a four-option interaction (per-finding walk-through, auto-resolve with best judgment, Append-to-Open-Questions, Report-only) for user decision.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for long documents, review JSON, persona outputs, and diff previews, and use persistent/session recall for prior decisions or related plan history.
+- Use subagent delegation for persona fan-out and blocking question tools for interactive routing. For 5 or more options, multi-select limits, unavailable question tools, or tool errors, use the numbered-list fallback and wait for the user's reply.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## Interactive mode rules
 
 - **Pre-load the platform question tool before any question fires.** In Claude Code, `AskUserQuestion` is a deferred tool — its schema is not available at session start. At the start of Interactive-mode work (before the routing question, per-finding walk-through questions, bulk-preview Proceed/Cancel, and Phase 5 terminal question), call `ToolSearch` with query `select:AskUserQuestion` to load the schema. Load it once, eagerly, at the top of the Interactive flow — do not wait for the first question site. On Codex, Gemini, and Pi this preload is not required.

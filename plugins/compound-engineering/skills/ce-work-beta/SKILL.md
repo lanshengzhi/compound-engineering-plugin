@@ -15,6 +15,14 @@ This command takes a work document (plan or specification) or a bare prompt desc
 
 **Beta rollout note:** Invoke `ce-work-beta` manually when you want to trial Codex delegation. During the beta period, planning and workflow handoffs remain pointed at stable `ce-work` to avoid dual-path orchestration complexity.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for broad scans, logs, test output, and generated diffs; use symbol diagnostics/navigation before builds when code intelligence is available; use structural search/edit for code patterns before falling back to text search.
+- Use task tracking for the execution list and subagent delegation for independent plan units, review personas, or context-isolated implementation work.
+- Use web research only when external framework, API, or release context is needed; otherwise rely on repo evidence and local tests.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## Input Document
 
 <input_document> #$ARGUMENTS </input_document>

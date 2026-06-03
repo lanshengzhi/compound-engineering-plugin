@@ -14,6 +14,14 @@ The durable output of this workflow is a **requirements document**. In other wor
 
 This skill does not implement code. It explores, clarifies, and documents decisions for later planning or execution.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for long scans, transcripts, and research output, and use persistent/session recall when prior decisions or indexed learnings may affect requirements.
+- Use web research when external product, market, or technical context would change the brainstorm; otherwise rely on repo and user-provided evidence.
+- Use blocking question tools for user decisions. For 5 or more options, multi-select limits, unavailable question tools, or tool errors, use the numbered-list fallback and wait for the user's reply.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 **IMPORTANT: All file references in generated documents must use repo-relative paths (e.g., `src/models/user.rb`), never absolute paths. Absolute paths break portability across machines, worktrees, and teammates.**
 
 ## Core Principles

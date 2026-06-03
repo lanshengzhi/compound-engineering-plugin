@@ -7,6 +7,13 @@ description: "Search and ask questions about coding agent session history across
 
 Search session history across Claude Code, Codex, and Cursor and synthesize findings about what was worked on, tried, decided, or learned in prior sessions.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for session discovery, extraction output, and search summaries.
+- Use persistent/session recall for indexed session memory when available, while keeping raw session files out of context.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## Usage
 
 ```

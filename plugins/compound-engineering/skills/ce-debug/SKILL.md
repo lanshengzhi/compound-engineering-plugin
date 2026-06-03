@@ -10,6 +10,14 @@ Find root causes, then fix them. This skill investigates bugs systematically —
 
 <bug_description> #$ARGUMENTS </bug_description>
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for logs, traces, test output, issue payloads, and dependency output.
+- Use symbol diagnostics/navigation to trace definitions, references, call chains, and diagnostics, and use structural search/edit for code patterns before falling back to text search.
+- Use web research when issue trackers, framework docs, or external error signatures are needed; state missing external context when web access is unavailable.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## Core Principles
 
 1. **Investigate before fixing.** Do not propose a fix until you can explain the full causal chain from trigger to symptom with no gaps. "Somehow X leads to Y" is a gap.

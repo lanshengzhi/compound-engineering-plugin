@@ -8,6 +8,14 @@ argument-hint: "[blank to review current branch, or provide PR link]"
 
 Reviews code changes using dynamically selected reviewer personas. Spawns parallel sub-agents that return structured JSON, then merges and deduplicates findings into a single report.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for diffs, review JSON, test output, and multi-agent results.
+- Use symbol diagnostics/navigation for definitions, references, and diagnostics, and use structural search/edit for code patterns before falling back to text search.
+- Use subagent delegation for persona fan-out and blocking question tools for interactive routing. For 5 or more options, multi-select limits, unavailable question tools, or tool errors, use the numbered-list fallback and wait for the user's reply.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## When to Use
 
 - Before creating a PR

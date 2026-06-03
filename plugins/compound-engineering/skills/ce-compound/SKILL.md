@@ -14,6 +14,13 @@ Captures problem solutions while context is fresh, creating structured documenta
 
 **Why "compound"?** Each documented solution compounds your team's knowledge. The first time you solve a problem takes research. Document it, and the next occurrence takes minutes. Knowledge compounds.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for diffs, session excerpts, and docs/solutions scans, and use persistent/session recall for prior learnings and related attempts.
+- Use web research when external framework or ecosystem context makes the learning more durable; otherwise rely on repo evidence and the solved problem record.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## Usage
 
 ```bash

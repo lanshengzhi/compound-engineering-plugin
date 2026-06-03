@@ -8,6 +8,13 @@ argument-hint: "[optional: scope hint — directory, filename, module, or keywor
 
 Maintain the quality of `docs/solutions/` over time. This workflow reviews existing learnings against the current codebase, then refreshes any derived pattern docs that depend on them.
 
+## Tooling Preference
+
+Prefer platform-native tooling for this workflow:
+- Use large-output compression for docs/solutions scans, classification output, and diff summaries, and use persistent/session recall for prior refresh decisions or indexed learnings.
+- Use structural search/edit to verify references, detect duplicate patterns, and apply precise documentation updates before falling back to text search.
+- Unavailable tools and tool errors trigger fallback to bounded native reads/search/edit, local repo evidence, or transcript task state; empty diagnostics, zero matches, and no recall results are data, not failures.
+
 ## Mode Detection
 
 Check if `$ARGUMENTS` contains `mode:headless`. If present, strip it from arguments (use the remainder as a scope hint) and run in **headless mode**.
